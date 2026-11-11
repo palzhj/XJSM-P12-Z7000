@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XVC Console — XJSM-P12-Z7000</title>
+<style>
+  :root{
+    --bg:#0b0e13; --panel:#131820; --panel2:#181f29; --line:#232c38;
+    --fg:#e8eef7; --dim:#8595a8; --dim2:#5c6b7d;
+    --ok:#2ecc71; --warn:#f5a623; --err:#ef4444; --acc:#4c9aff; --acc2:#7c5cff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:radial-gradient(1200px 600px at 20% -10%,#161d28 0%,var(--bg) 55%);
+       color:var(--fg);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1320px;margin:0 auto;padding:26px 22px 60px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--acc),var(--acc2));
+        display:grid;place-items:center;font-weight:800;font-size:15px;color:#fff;letter-spacing:.5px}
+  h1{font-size:19px;margin:0;font-weight:650;letter-spacing:.2px}
+  .sub{color:var(--dim);font-size:12.5px;margin-top:2px}
+  .pill{display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;
+        font-size:12.5px;font-weight:600;border:1px solid var(--line);background:var(--panel)}
+  .pill.on{color:var(--ok);border-color:rgba(46,204,113,.35);background:rgba(46,204,113,.08)}
+  .pill.off{color:var(--err);border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.08)}
+  .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+  .pill.on .dot{box-shadow:0 0 0 3px rgba(46,204,113,.18)}
+  .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel);
+       border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:20px}
+  button{font:inherit;font-weight:600;font-size:13px;border-radius:9px;padding:9px 16px;cursor:pointer;
+       border:1px solid var(--line);background:var(--panel2);color:var(--fg);transition:.15s}
+  button:hover{background:#202a36;border-color:#2f3b4a;transform:translateY(-1px)}
+  button:active{transform:translateY(0)}
+  button.primary{background:linear-gradient(135deg,var(--acc),#3a7fe0);border-color:transparent;color:#fff}
+  button.primary:hover{filter:brightness(1.08)}
+  button.ghost{background:transparent}
+  button.danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:#ff8a8a}
+  button.danger:hover{background:rgba(239,68,68,.2)}
+  .sep{width:1px;height:24px;background:var(--line);margin:0 4px}
+  label.f{display:flex;align-items:center;gap:8px;color:var(--dim);font-size:12.5px;font-weight:600}
+  select{font:inherit;font-size:13px;background:#0d1219;color:var(--fg);border:1px solid var(--line);
+         border-radius:9px;padding:8px 11px;cursor:pointer;outline:none}
+  select:focus{border-color:var(--acc)}
+  input{font:inherit;font-size:13px;width:86px;background:#0d1219;color:var(--fg);
+       border:1px solid var(--line);border-radius:9px;padding:8px 11px}
+  input:focus{outline:none;border-color:var(--acc)}
+  .note{color:var(--dim2);font-size:12px;margin-left:8px;min-height:16px}
+  .tablewrap{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+       border-radius:14px;overflow:hidden}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);
+       font-weight:700;text-align:left;padding:12px 14px;background:#10151d;border-bottom:1px solid var(--line);
+       white-space:nowrap}
+  tbody td{padding:11px 14px;border-bottom:1px solid rgba(35,44,56,.6);font-size:13px;
+       font-variant-numeric:tabular-nums;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr{transition:background .12s}
+  tbody tr:hover{background:rgba(76,154,255,.045)}
+  .chname{display:flex;align-items:center;gap:9px;font-weight:680;letter-spacing:.2px}
+  .chdot{width:8px;height:8px;border-radius:50%;background:#3a4657;flex:none}
+  .chdot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(46,204,113,.16)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+  .mini{display:flex;align-items:center;gap:8px;min-width:120px}
+  .mini .bar{flex:1;height:5px;border-radius:4px;background:#0d1219;overflow:hidden}
+  .mini .bar > i{display:block;height:100%;border-radius:4px;transition:width .35s ease}
+  .mini .bar.tx > i{background:linear-gradient(90deg,var(--acc),#7ec2ff)}
+  .mini .bar.rx > i{background:linear-gradient(90deg,var(--acc2),#b39bff)}
+  .mini span{color:var(--dim);font-size:11.5px;min-width:44px;text-align:right}
+  .badge.idle{color:var(--dim);background:#1b2330}
+  .badge.busy{color:#12161c;background:var(--warn)}
+  input[type=radio]:disabled{opacity:.25;cursor:not-allowed}
+  .badge.bc{background:rgba(232,135,58,.18);color:#e8873a;border:1px solid rgba(232,135,58,.45)}
+  .badge.none{color:var(--err);background:rgba(239,68,68,.14)}
+  .badge.conn{color:#0d1b12;background:linear-gradient(135deg,var(--ok),#59e08f)}
+  .pulse{animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+  @media (max-width:820px){.hide-sm{display:none}}
+  .net{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+       border-radius:14px;padding:16px 18px;margin-bottom:20px}
+  .net h2{font-size:13px;margin:0 0 12px;color:var(--dim);text-transform:uppercase;
+          letter-spacing:.09em;font-weight:700;display:flex;align-items:center;gap:10px}
+  .net .info{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 18px;margin-bottom:14px}
+  .net .info .r{display:flex;justify-content:space-between;gap:10px;font-size:12.5px}
+  .net .info .k{color:var(--dim2)}
+  .net .info .v{font-weight:600;font-variant-numeric:tabular-nums}
+  .net form{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .net input{width:140px}
+  .modal{position:fixed;inset:0;background:rgba(6,9,13,.72);backdrop-filter:blur(3px);
+         display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal.open{display:flex}
+  .modal-card{width:min(520px,100%);background:linear-gradient(180deg,var(--panel2),var(--panel));
+         border:1px solid var(--line);border-radius:16px;padding:20px 22px;
+         box-shadow:0 30px 80px -20px #000;animation:pop .16s ease-out}
+  @keyframes pop{from{transform:translateY(8px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .modal-head h2{font-size:15px;margin:0;font-weight:680}
+  button.x{background:transparent;border:none;color:var(--dim);font-size:22px;line-height:1;
+           padding:2px 8px;border-radius:8px;cursor:pointer}
+  button.x:hover{background:#202a36;color:var(--fg)}
+  .modal .info{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-bottom:18px}
+  .modal .info .r{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;
+                  border-bottom:1px dashed rgba(35,44,56,.7);padding-bottom:6px}
+  .modal .info .k{color:var(--dim2)}
+  .modal .info .v{font-weight:600;font-variant-numeric:tabular-nums}
+  .netform{display:flex;flex-direction:column;gap:10px}
+  .netform input{width:100%}
+  .netform .f{justify-content:space-between}
+  .netform .actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:6px}
+  .bc3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .bccell{background:#0f141c;border:1px solid var(--line);border-radius:11px;padding:12px 14px}
+  .bccell .k{color:var(--dim2);font-size:11px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:6px}
+  .bccell .v{font-size:14px;font-weight:650;font-variant-numeric:tabular-nums}
+  .bc3 form{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+  .bc3 select{flex:1 1 auto;min-width:0}
+  .bc3 form button{flex:0 0 auto;padding:8px 14px;white-space:nowrap}
+  @media (max-width:640px){.bc3{grid-template-columns:1fr}}
+  tr.bcrow td{background:rgba(76,154,255,.055);border-bottom:1px solid rgba(76,154,255,.22);
+              font-size:12.5px}
+  tr.bcrow .chname{color:#9ecbff}
+  th.cx, td.cx{text-align:center;width:52px}
+  .hdr2{margin-bottom:4px}
+  th.cx input{margin:0}
+  input[type=checkbox],input[type=radio]{width:16px;height:16px;accent-color:var(--acc);cursor:pointer;margin:0}
+  .bcchips{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+  .chip{font:inherit;font-size:12px;font-weight:650;padding:6px 12px;border-radius:999px;cursor:pointer;
+        border:1px solid var(--line);background:#0f141c;color:var(--dim2);transition:.14s;user-select:none}
+  .chip:hover{border-color:#33445a;color:var(--dim)}
+  .chip.on{background:rgba(76,154,255,.14);border-color:rgba(76,154,255,.5);color:#9ecbff}
+  .chip.on::before{content:"✓ ";font-weight:800}
+  footer{margin-top:26px;color:var(--dim2);font-size:11.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .pulse{animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+  @media (max-width:520px){.kpi .v{font-size:22px}.wrap{padding:18px 14px 44px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">XVC</div>
+      <div>
+        <h1>XVC Console</h1>
+        <div class="sub">XJSM-P12-Z7000 · 12-channel parallel JTAG · <span id="updated">—</span></div>
+      </div>
+    </div>
+    <button class="primary" onclick="openNet()">Network setup</button>
+  </header>
+
+
+  <section class="toolbar">
+    <button class="ghost" onclick="openNet()"><span style="color:var(--dim2)">Network:</span> <span id="netBtnIp">—</span></button>
+    <div class="sep"></div>
+    <div class="pill" id="srvPill"><span class="dot"></span><span id="srvText">Connecting…</span></div>
+    <div class="sep"></div>
+    <button class="primary" onclick="ctl('start')">Start</button>
+    <button onclick="ctl('restart')">Restart</button>
+    <button class="danger" onclick="ctl('stop')">Stop</button>
+    <div class="sep"></div>
+    <label class="f" style="margin-left:auto">JTAG speed
+      <select id="speed">
+        <option value="10000000">10 MHz</option>
+        <option value="5000000">5 MHz</option>
+        <option value="2000000">2 MHz</option>
+        <option value="1000000">1 MHz</option>
+        <option value="500000">500 kHz</option>
+        <option value="250000">250 kHz</option>
+        <option value="100000">100 kHz</option>
+      </select>
+    </label>
+    <button class="ghost" onclick="setSpeed()">Apply</button>
+
+    <div class="note" id="note"></div>
+  </section>
+
+
+
+
+
+  <section class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Channel</th>
+          <th class="cx">BC</th>
+          <th class="cx">TDO</th>
+          <th>Port</th>
+          <th>Client</th>
+          <th>State</th>
+          <th>Speed</th>
+          <th class="hide-sm">TX used</th>
+          <th class="hide-sm">RX used</th>
+          <th>Transferred (MB)</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </section>
+
+  <footer>
+    <span>XVC 1.0 · ports 2542 (broadcast) + 2543–2554 (AMC1–AMC12)</span>
+    <span id="foot"></span>
+  </footer>
+
+  <!-- Network dialog -->
+  <div class="modal" id="netModal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>Network settings</h2>
+        <button class="x" onclick="closeNet()" title="Close">×</button>
+      </div>
+      <div class="info">
+        <div class="r"><span class="k">Interface</span><span class="v" id="nIf">—</span></div>
+        <div class="r"><span class="k">MAC address</span><span class="v" id="nMac">—</span></div>
+        <div class="r"><span class="k">Link</span><span class="v"><span class="badge idle" id="linkState">—</span></span></div>
+        <div class="r"><span class="k">IP address</span><span class="v" id="nIp">—</span></div>
+        <div class="r"><span class="k">Netmask</span><span class="v" id="nMask">—</span></div>
+        <div class="r"><span class="k">Gateway</span><span class="v" id="nGw">—</span></div>
+      </div>
+      <form class="netform" onsubmit="applyNet(); return false;">
+        <label class="f">IP <input id="fIp" placeholder="192.168.1.113"></label>
+        <label class="f">Mask <input id="fMask" placeholder="255.255.255.0"></label>
+        <label class="f">GW <input id="fGw" placeholder="192.168.1.1"></label>
+        <div class="actions">
+          <button class="primary" type="submit">Apply static</button>
+          <button type="button" onclick="useDhcp()">Use DHCP</button>
+          <button type="button" class="ghost" onclick="closeNet()">Close</button>
+        </div>
+        <div class="note" id="netNote"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+const PORTS = 2543;
+const qs = new URLSearchParams(location.search);
+const MOCK = qs.get('mock') === '1';
+
+function mockData(){
+  const ch = [];
+  for (let i = 0; i < 12; i++){
+    const up = i === 0;
+    ch.push({
+      ch:i, tag: up ? '0xA7000000' : '0x00000000', div:5, tck_mhz:10,
+      tx_free: up ? 96 : 0, rx_used: up ? 32 : 0,
+      done: up ? 5734580 : 0, busy: i === 3, state:1,
+      clients: (i === 0 || i === 3) ? 1 : 0
+    });
+  }
+  return {server_pid: 899, clients: 2, nch: 12, bcast: 0, bcast_tdo: 0, bcmask: 0xFFF, bcast_clients: 0, channels: ch};
+}
+async function getStatus(){
+  if (MOCK) return mockData();
+  const r = await fetch('cgi-bin/status', {cache:'no-store'});
+  return r.json();
+}
+async function ctl(cmd){
+  if (MOCK) return;
+  await fetch('cgi-bin/control?cmd=' + encodeURIComponent(cmd), {method:'POST'});
+  refreshAll(600);
+}
+async function setSpeed(){
+  const hz = parseInt(document.getElementById('speed').value, 10);
+  const div = Math.max(1, Math.round(100000000 / (2 * hz)));
+  if (MOCK) return;
+  await fetch('cgi-bin/control?cmd=div&v=' + div, {method:'POST'});
+  refreshAll(600);
+}
+let bcMask = (function(){
+  try { var v = parseInt(localStorage.getItem('xvc_bcmask_v2'), 10); return isNaN(v) ? 0x001 : (v & 0xFFF); }
+  catch (e) { return 0x001; }
+})();
+function saveMask(){
+  try { localStorage.setItem('xvc_bcmask_v2', String(bcMask)); } catch (e) {}
+}
+let bcastSel = 0;
+
+/* Push the local mask to the hardware on page load so bcast_en matches the UI */
+function pushMaskOnLoad(){
+  fetch('cgi-bin/control?cmd=setbcmask&v=' + bcMask, {method:'POST'}).catch(function(){});
+}
+window.addEventListener('load', pushMaskOnLoad);
+
+async function toggleAll(on){
+  bcMask = on ? 0xFFF : 0;                  /* allow deselecting everything (= broadcast takes over no port) */
+  saveMask();
+  if (!on) { /* all deselected: keep the TDO source */ }
+  if (!((bcMask >> bcastSel) & 1) && bcMask) setTdo(firstOn());
+  if (MOCK) { render(await getStatus()); return; }
+  await fetch('cgi-bin/control?cmd=setbcmask&v=' + bcMask, {method:'POST'});
+  refreshAll(400);
+}
+
+async function toggleCh(ch, on){
+  if (on) bcMask |= (1 << ch); else bcMask &= ~(1 << ch);
+  /* bcMask may become 0: the CGI turns bcast_en off and the broadcast engine takes over no pins */
+  saveMask();
+  /* allow deselecting everything (mask 0 = broadcast to no channel) */
+  if (bcMask && !((bcMask >> bcastSel) & 1)) setTdo(firstOn());
+  if (MOCK) return;
+  await fetch('cgi-bin/control?cmd=setbcmask&v=' + bcMask, {method:'POST'});
+  refreshAll(500);
+}
+function firstOn(){
+  for (let i = 0; i < 12; i++) if ((bcMask >> i) & 1) return i;
+  return 0;
+}
+function maskNames(){
+  const n = [];
+  for (let i = 0; i < 12; i++) if ((bcMask >> i) & 1) n.push('AMC' + (i+1));
+  return n.length === 12 ? 'all 12 channels' : n.join(', ');
+}
+async function setTdo(ch){
+  /* The TDO source must be a channel in the broadcast: auto-check it so the semantics stay consistent */
+  if (!((bcMask >> ch) & 1)) {
+    bcMask |= (1 << ch);
+    saveMask();
+    fetch('cgi-bin/control?cmd=setbcmask&v=' + bcMask, {method:'POST'}).catch(function(){});
+  }
+  bcastSel = ch;
+  if (MOCK) return;
+  await fetch('cgi-bin/control?cmd=setchsel&v=' + ch, {method:'POST'});
+  refreshAll(500);
+}
+
+function mb(words){ return ((words || 0) * 4 / 1e6).toFixed(2) + ' MB'; }
+function fmtSpeed(mhz){
+  if (!mhz) return '—';
+  return mhz >= 1 ? (mhz % 1 === 0 ? mhz.toFixed(0) : mhz.toFixed(2)) + ' MHz'
+                  : Math.round(mhz * 1000) + ' kHz';
+}
+function pct(v, max){ return Math.max(0, Math.min(100, max ? (v / max) * 100 : 0)); }
+function fmt(n){ return (n||0).toLocaleString('en-US'); }
+
+function render(d){
+  const running = !!d.server_pid;
+  srvPill.className = 'pill ' + (running ? 'on' : 'off');
+  srvText.textContent = running ? 'Server running' : 'Server stopped';
+
+  let html = '';
+  const bcOn = (bcMask !== 0);
+  const bcBusy = d.channels.some(c => ((bcMask >> c.ch) & 1) && c.busy);
+  const names = [];
+  for (let i = 0; i < 12; i++) if ((bcMask >> i) & 1) names.push('AMC' + (i+1));
+
+  /* Broadcast row (first row): the BC select-all checkbox lives here */
+  const bcRow = '<tr class="bcrow">'
+    + '<td><div class="chname"><span class="chdot ' + (bcOn ? 'on' : '') + '"></span>BROADCAST</div></td>'
+    + '<td class="cx"><input type="checkbox" id="bcAll" title="Select / deselect all"'
+      + (bcMask === 0xFFF ? ' checked' : '') + ' onchange="toggleAll(this.checked)"></td>'
+    + '<td class="cx mono" style="color:var(--acc)">AMC' + (bcastSel + 1) + '</td>'
+    + '<td class="mono">2542</td>'
+    + '<td>' + ((d.bcast_clients > 0)
+          ? '<span class="badge conn">CONNECTED</span>'
+          : '<span class="badge idle">\u2014</span>') + '</td>'
+    + '<td>' + (bcBusy
+          ? '<span class="badge busy">SHIFTING</span>'
+          : (bcOn ? '<span class="badge idle">IDLE</span>'
+                  : '<span class="badge none">NO CH</span>')) + '</td>'
+    + '<td class="mono">' + (d.channels[0] ? fmtSpeed(d.channels[0].tck_mhz) : '\u2014') + '</td>'
+    + (function(){
+        const b = d.bcast_ch || {};
+        const tfree = (b.tx_free === undefined) ? 128 : b.tx_free;
+        const tu = 128 - tfree;                     /* TX used */
+        const ru = (b.rx_used === undefined) ? 0 : b.rx_used;
+        return '<td class="hide-sm"><div class="mini"><div class="bar tx"><i style="width:'
+             + pct(tu,128) + '%"></i></div><span>' + tu + '/128</span></div></td>'
+             + '<td class="hide-sm"><div class="mini"><div class="bar rx"><i style="width:'
+             + pct(ru,128) + '%"></i></div><span>' + ru + '/128</span></div></td>';
+      })()
+    + '<td class="mono">' + mb(d.channels.reduce(
+        (a,c) => a + (names.includes('AMC'+(c.ch+1)) ? (c.done||0) : 0), 0)) + '</td>'
+    + '</tr>';
+
+  let idx = 0;
+  for (const c of d.channels){
+    if (idx === 0) html += bcRow;
+    idx++;
+    const up = c.tag !== '0x00000000';
+    const inBcast = (d.bcast && ((bcMask >> c.ch) & 1));
+    const st = inBcast ? '<span class="badge bc">BC</span>'
+             : c.busy ? '<span class="badge busy">SHIFTING</span>'
+             : up     ? '<span class="badge idle">IDLE</span>'
+                      : '<span class="badge none">NO LINK</span>';
+    html += '<tr>'
+      + '<td><div class="chname"><span class="chdot ' + (up?'on':'') + '"></span>AMC' + (c.ch+1) + '</div></td>'
+      + '<td class="cx"><input type="checkbox" class="cb"' + ((bcMask >> c.ch) & 1 ? ' checked' : '')
+        + ' onchange="toggleCh(' + c.ch + ', this.checked)"></td>'
+      + '<td class="cx"><input type="radio" name="tdosel"'
+        + (c.ch === bcastSel ? ' checked' : '')
+        + ' onchange="setTdo(' + c.ch + ')"></td>'
+      + '<td class="mono">' + (PORTS + c.ch) + '</td>'
+      + '<td>' + (c.clients > 0
+            ? '<span class="badge conn">CONNECTED</span>'
+            : '<span class="badge idle">\u2014</span>') + '</td>'
+      + '<td>' + st + '</td>'
+      + '<td class="mono">' + fmtSpeed(c.tck_mhz) + '</td>'
+      + '<td class="hide-sm"><div class="mini"><div class="bar tx"><i style="width:'
+        + pct(128 - c.tx_free, 128) + '%"></i></div><span>' + (128 - c.tx_free) + '/128</span></div></td>'
+      + '<td class="hide-sm"><div class="mini"><div class="bar rx"><i style="width:'
+        + pct(c.rx_used,128) + '%"></i></div><span>' + c.rx_used + '/128</span></div></td>'
+      + '<td class="mono">' + mb(c.done) + '</td>'
+      + '</tr>';
+  }
+  if (d.channels.length < 2) html += bcRow;
+  rows.innerHTML = html;
+  /* Do not sync bcmask from the registers: 0x40 is not implemented in the current bitstream,
+     so the readback is a residual AXI value (untrustworthy). The selection lives only in browser localStorage. */
+  const bcAllEl = document.getElementById('bcAll');
+  if (bcAllEl) bcAllEl.checked = (bcMask === 0xFFF);
+  /* Broadcast status comes from ch12 (the broadcast engine): bcast = CTRL bit4, bcmask = the follow mask.
+     These values are trustworthy once the bitstream contains the 13th engine; sync the mask only while broadcast is enabled. */
+  if (typeof d.bcast_tdo === 'number') bcastSel = d.bcast_tdo & 0xF;
+  updated.textContent = 'updated ' + new Date().toLocaleTimeString('en-GB');
+  foot.textContent = MOCK ? 'mock preview' : '';
+}
+
+function openNet(){ document.getElementById('netModal').classList.add('open'); refreshNet(); }
+function closeNet(){ document.getElementById('netModal').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNet(); });
+document.addEventListener('click', e => {
+  const m = document.getElementById('netModal');
+  if (e.target === m) closeNet();
+});
+
+async function refreshNet(){
+  if (MOCK) {
+    nIf.textContent = 'eth0'; nMac.textContent = '00:0a:35:0b:1c:2d';
+    nIp.textContent = '192.168.1.113'; nMask.textContent = '255.255.255.0';
+    nGw.textContent = '192.168.1.1';
+    netBtnIp.textContent = '192.168.1.113';
+    linkState.className = 'badge idle'; linkState.textContent = 'LINK UP';
+    return;
+  }
+  try {
+    const r = await fetch('cgi-bin/net', {cache:'no-store'});
+    const n = await r.json();
+    nIf.textContent = n.iface; nMac.textContent = n.mac || '—';
+    netBtnIp.textContent = n.ip || '—';
+    nIp.textContent = n.ip || '—'; nMask.textContent = n.netmask || '—';
+    nGw.textContent = n.gateway || '—';
+    linkState.className = 'badge ' + (n.link_up ? 'idle' : 'none');
+    linkState.textContent = n.link_up ? 'LINK UP' : 'LINK DOWN';
+    document.getElementById('fIp').value = n.ip || '';
+    document.getElementById('fMask').value = n.netmask || '';
+    document.getElementById('fGw').value = n.gateway || '';
+  } catch(e) {}
+}
+function refreshAll(delay){
+  setTimeout(function(){ refresh(); refreshNet(); }, delay || 800);
+}
+
+async function applyNet(){
+  const ip = document.getElementById('fIp').value.trim();
+  const mask = document.getElementById('fMask').value.trim();
+  const gw = document.getElementById('fGw').value.trim();
+  netNote.textContent = 'applying ' + ip + ' …';
+  if (MOCK) { netNote.textContent = 'static ' + ip + ' (mock)'; return; }
+  const r = await fetch('cgi-bin/control?cmd=setnet&ip=' + encodeURIComponent(ip) +
+                        '&mask=' + encodeURIComponent(mask) + '&gw=' + encodeURIComponent(gw),
+                        {method:'POST'});
+  netNote.textContent = (await r.text()).trim();
+  refreshAll(1200);
+}
+async function useDhcp(){
+  netNote.textContent = 'requesting DHCP …';
+  if (MOCK) { netNote.textContent = 'dhcp (mock)'; return; }
+  const r = await fetch('cgi-bin/control?cmd=dhcp', {method:'POST'});
+  netNote.textContent = (await r.text()).trim();
+  refreshAll(4000);
+}
+
+async function refresh(){
+  try { render(await getStatus()); }
+  catch(e){ srvPill.className='pill off'; srvText.textContent='No response'; }
+}
+refresh();
+refreshNet();
+setInterval(refresh, 1500);
+setInterval(refreshNet, 5000);
+</script>
+</body>
+</html>

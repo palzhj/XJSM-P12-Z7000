@@ -1,0 +1,79 @@
+ASSIGN-5,Bit(s) not assigned,0,ps7_DDR_ADDR,system,system.v,2604
+ASSIGN-5,Bit(s) not assigned,0,ps7_DDR_BA,system,system.v,2605
+ASSIGN-5,Bit(s) not assigned,0,ps7_DDR_CAS_N,system,system.v,2606
+ASSIGN-5,Bit(s) not assigned,0,ps7_DDR_CKE,system,system.v,2607
+ASSIGN-5,Bit(s) not assigned,0,ps7_DDR_CK_N,system,system.v,2608
+ASSIGN-5,Bit(s) not assigned,0,ps7_DDR_CK_P,system,system.v,2609
+ASSIGN-5,Bit(s) not assigned,0,ps7_DDR_CS_N,system,system.v,2610
+ASSIGN-5,Bit(s) not assigned,0,ps7_DDR_DM,system,system.v,2611
+ASSIGN-5,Bit(s) not assigned,0,ps7_DDR_DQ,system,system.v,2612
+ASSIGN-5,Bit(s) not assigned,0,ps7_DDR_DQS_N,system,system.v,2613
+ASSIGN-5,Bit(s) not assigned,0,ps7_DDR_DQS_P,system,system.v,2614
+ASSIGN-5,Bit(s) not assigned,0,ps7_DDR_ODT,system,system.v,2615
+ASSIGN-5,Bit(s) not assigned,0,ps7_DDR_RAS_N,system,system.v,2616
+ASSIGN-5,Bit(s) not assigned,0,ps7_DDR_RESET_N,system,system.v,2617
+ASSIGN-5,Bit(s) not assigned,0,ps7_DDR_WE_N,system,system.v,2618
+ASSIGN-5,Bit(s) not assigned,0,ps7_FIXED_IO_DDR_VRN,system,system.v,2621
+ASSIGN-5,Bit(s) not assigned,0,ps7_FIXED_IO_DDR_VRP,system,system.v,2622
+ASSIGN-5,Bit(s) not assigned,0,ps7_FIXED_IO_MIO,system,system.v,2623
+ASSIGN-5,Bit(s) not assigned,0,ps7_FIXED_IO_PS_CLK,system,system.v,2624
+ASSIGN-5,Bit(s) not assigned,0,ps7_FIXED_IO_PS_PORB,system,system.v,2625
+ASSIGN-5,Bit(s) not assigned,0,ps7_FIXED_IO_PS_SRSTB,system,system.v,2626
+ASSIGN-10,IO bit(s) not read,0,M_ACLK,m00_couplers_imp_1S4FO20,system.v,52
+ASSIGN-10,IO bit(s) not read,0,M_ACLK,m10_couplers_imp_QU9MMJ,system.v,1372
+ASSIGN-10,IO bit(s) not read,0,M_ACLK,m11_couplers_imp_1LDZGWQ,system.v,1504
+ASSIGN-10,IO bit(s) not read,0,M_ACLK,s00_couplers_imp_1LVGOWP,system.v,1923
+ASSIGN-10,IO bit(s) not read,0,M_ACLK,m08_couplers_imp_152OU6F,system.v,1108
+ASSIGN-10,IO bit(s) not read,0,M_ACLK,m12_couplers_imp_1S4HX2G,system.v,1636
+ASSIGN-10,IO bit(s) not read,0,M_ACLK,m13_couplers_imp_KDQGQH,system.v,1768
+ASSIGN-10,IO bit(s) not read,0,M_ACLK,m05_couplers_imp_17MV0KE,system.v,712
+ASSIGN-10,IO bit(s) not read,0,M_ACLK,m07_couplers_imp_7GKRGD,system.v,976
+ASSIGN-10,IO bit(s) not read,0,M_ACLK,m06_couplers_imp_1E3F88C,system.v,844
+ASSIGN-10,IO bit(s) not read,0,M_ACLK,m04_couplers_imp_E74YKV,system.v,580
+ASSIGN-10,IO bit(s) not read,0,M_ACLK,m03_couplers_imp_1LDVIBE,system.v,448
+ASSIGN-10,IO bit(s) not read,0,M_ACLK,m02_couplers_imp_QU72LN,system.v,316
+ASSIGN-10,IO bit(s) not read,0,M_ACLK,m01_couplers_imp_KDMT5L,system.v,184
+ASSIGN-10,IO bit(s) not read,0,M_ACLK,m09_couplers_imp_G75LXY,system.v,1240
+ASSIGN-10,IO bit(s) not read,0,M_ARESETN,m04_couplers_imp_E74YKV,system.v,581
+ASSIGN-10,IO bit(s) not read,0,M_ARESETN,m10_couplers_imp_QU9MMJ,system.v,1373
+ASSIGN-10,IO bit(s) not read,0,M_ARESETN,s00_couplers_imp_1LVGOWP,system.v,1924
+ASSIGN-10,IO bit(s) not read,0,M_ARESETN,m00_couplers_imp_1S4FO20,system.v,53
+ASSIGN-10,IO bit(s) not read,0,M_ARESETN,m13_couplers_imp_KDQGQH,system.v,1769
+ASSIGN-10,IO bit(s) not read,0,M_ARESETN,m11_couplers_imp_1LDZGWQ,system.v,1505
+ASSIGN-10,IO bit(s) not read,0,M_ARESETN,m07_couplers_imp_7GKRGD,system.v,977
+ASSIGN-10,IO bit(s) not read,0,M_ARESETN,m01_couplers_imp_KDMT5L,system.v,185
+ASSIGN-10,IO bit(s) not read,0,M_ARESETN,m06_couplers_imp_1E3F88C,system.v,845
+ASSIGN-10,IO bit(s) not read,0,M_ARESETN,m03_couplers_imp_1LDVIBE,system.v,449
+ASSIGN-10,IO bit(s) not read,0,M_ARESETN,m09_couplers_imp_G75LXY,system.v,1241
+ASSIGN-10,IO bit(s) not read,0,M_ARESETN,m08_couplers_imp_152OU6F,system.v,1109
+ASSIGN-10,IO bit(s) not read,0,M_ARESETN,m05_couplers_imp_17MV0KE,system.v,713
+ASSIGN-10,IO bit(s) not read,0,M_ARESETN,m12_couplers_imp_1S4HX2G,system.v,1637
+ASSIGN-10,IO bit(s) not read,0,M_ARESETN,m02_couplers_imp_QU72LN,system.v,317
+ASSIGN-10,IO bit(s) not read,0,S_ACLK,m04_couplers_imp_E74YKV,system.v,599
+ASSIGN-10,IO bit(s) not read,0,S_ACLK,m00_couplers_imp_1S4FO20,system.v,71
+ASSIGN-10,IO bit(s) not read,0,S_ACLK,m03_couplers_imp_1LDVIBE,system.v,467
+ASSIGN-10,IO bit(s) not read,0,S_ACLK,m05_couplers_imp_17MV0KE,system.v,731
+ASSIGN-10,IO bit(s) not read,0,S_ACLK,m06_couplers_imp_1E3F88C,system.v,863
+ASSIGN-10,IO bit(s) not read,0,S_ACLK,m02_couplers_imp_QU72LN,system.v,335
+ASSIGN-10,IO bit(s) not read,0,S_ACLK,m01_couplers_imp_KDMT5L,system.v,203
+ASSIGN-10,IO bit(s) not read,0,S_ACLK,m13_couplers_imp_KDQGQH,system.v,1787
+ASSIGN-10,IO bit(s) not read,0,S_ACLK,m08_couplers_imp_152OU6F,system.v,1127
+ASSIGN-10,IO bit(s) not read,0,S_ACLK,m12_couplers_imp_1S4HX2G,system.v,1655
+ASSIGN-10,IO bit(s) not read,0,S_ACLK,m07_couplers_imp_7GKRGD,system.v,995
+ASSIGN-10,IO bit(s) not read,0,S_ACLK,m11_couplers_imp_1LDZGWQ,system.v,1523
+ASSIGN-10,IO bit(s) not read,0,S_ACLK,m09_couplers_imp_G75LXY,system.v,1259
+ASSIGN-10,IO bit(s) not read,0,S_ACLK,m10_couplers_imp_QU9MMJ,system.v,1391
+ASSIGN-10,IO bit(s) not read,0,S_ARESETN,m03_couplers_imp_1LDVIBE,system.v,468
+ASSIGN-10,IO bit(s) not read,0,S_ARESETN,m00_couplers_imp_1S4FO20,system.v,72
+ASSIGN-10,IO bit(s) not read,0,S_ARESETN,m10_couplers_imp_QU9MMJ,system.v,1392
+ASSIGN-10,IO bit(s) not read,0,S_ARESETN,m09_couplers_imp_G75LXY,system.v,1260
+ASSIGN-10,IO bit(s) not read,0,S_ARESETN,m01_couplers_imp_KDMT5L,system.v,204
+ASSIGN-10,IO bit(s) not read,0,S_ARESETN,m02_couplers_imp_QU72LN,system.v,336
+ASSIGN-10,IO bit(s) not read,0,S_ARESETN,m11_couplers_imp_1LDZGWQ,system.v,1524
+ASSIGN-10,IO bit(s) not read,0,S_ARESETN,m08_couplers_imp_152OU6F,system.v,1128
+ASSIGN-10,IO bit(s) not read,0,S_ARESETN,m12_couplers_imp_1S4HX2G,system.v,1656
+ASSIGN-10,IO bit(s) not read,0,S_ARESETN,m04_couplers_imp_E74YKV,system.v,600
+ASSIGN-10,IO bit(s) not read,0,S_ARESETN,m05_couplers_imp_17MV0KE,system.v,732
+ASSIGN-10,IO bit(s) not read,0,S_ARESETN,m13_couplers_imp_KDQGQH,system.v,1788
+ASSIGN-10,IO bit(s) not read,0,S_ARESETN,m07_couplers_imp_7GKRGD,system.v,996
+ASSIGN-10,IO bit(s) not read,0,S_ARESETN,m06_couplers_imp_1E3F88C,system.v,864

@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="900" viewBox="0 0 1300 900" font-family="DejaVu Sans, Arial, sans-serif">
+  <defs>
+    <marker id="a2" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 z" fill="#4a90d9"/></marker>
+    <marker id="g2" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 z" fill="#39b54a"/></marker>
+    <marker id="o2" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 z" fill="#e8873a"/></marker>
+    <style>
+      .b{fill:#fff;stroke:#4a5568;stroke-width:1.8;rx:6}
+      .eng{fill:#eaf7ec;stroke:#39b54a;stroke-width:2;rx:6}
+      .bce{fill:#fff3e0;stroke:#e8873a;stroke-width:2.5;rx:6}
+      .mx{fill:#e8f0fb;stroke:#4a90d9;stroke-width:2;rx:6}
+      .ax{fill:#f3e8fb;stroke:#8e44ad;stroke-width:2;rx:6}
+      .t2{font-size:20px;font-weight:bold;fill:#2d3748}
+      .h2{font-size:14px;font-weight:bold;fill:#2d3748}
+      .s2{font-size:11px;fill:#4a5568}
+      .m2{font-family:DejaVu Sans Mono,monospace;font-size:10.5px;fill:#2d3748}
+      .rd{font-size:10.5px;fill:#c0392b;font-weight:bold}
+    </style>
+  </defs>
+  <rect width="1300" height="900" fill="#f7f9fc"/>
+  <text x="650" y="30" text-anchor="middle" class="t2">RTL Block Diagram — jtag_ctrl.v / jtag_bcast_mux.v</text>
+  <text x="650" y="52" text-anchor="middle" class="s2">13 jtag_ctrl instances + 1 jtag_bcast_mux + 4 xlconcat + 36 xlslice</text>
+
+  <!-- ===== PS / AXI ===== -->
+  <rect x="30" y="80" width="180" height="80" class="ax"/>
+  <text x="120" y="106" text-anchor="middle" class="h2">Zynq PS</text>
+  <text x="120" y="126" text-anchor="middle" class="m2">M_AXI_GP0</text>
+  <text x="120" y="146" text-anchor="middle" class="s2">FCLK_CLK0 100 MHz</text>
+
+  <line x1="210" y1="120" x2="270" y2="120" stroke="#8e44ad" stroke-width="2.5" marker-end="url(#a2)"/>
+
+  <rect x="270" y="70" width="200" height="100" class="ax"/>
+  <text x="370" y="94" text-anchor="middle" class="h2">axi_interconnect 2.1</text>
+  <text x="370" y="114" text-anchor="middle" class="m2">NUM_SI=1  NUM_MI=13</text>
+  <text x="370" y="134" text-anchor="middle" class="s2">64 KB / slave</text>
+  <text x="370" y="152" text-anchor="middle" class="s2">M00..M12_ACLK / ARESETN</text>
+
+  <!-- AXI to engines -->
+  <g stroke="#8e44ad" stroke-width="1.6" marker-end="url(#a2)">
+    <line x1="470" y1="90"  x2="540" y2="90"/>
+    <line x1="470" y1="105" x2="540" y2="115"/>
+    <line x1="470" y1="120" x2="540" y2="140"/>
+    <line x1="470" y1="135" x2="540" y2="165"/>
+    <line x1="470" y1="150" x2="540" y2="190"/>
+  </g>
+  <text x="505" y="78" text-anchor="middle" class="s2">M00..M11</text>
+
+  <!-- ===== 12 engines stack ===== -->
+  <rect x="540" y="62" width="250" height="330" class="eng"/>
+  <text x="665" y="84" text-anchor="middle" class="h2">jtag_ctrl × 12 (channel engines)</text>
+  <text x="552" y="104" class="m2">jtag0   0x43C00000</text>
+  <text x="552" y="124" class="m2">jtag1   0x43C10000</text>
+  <text x="552" y="144" class="m2">jtag2   0x43C20000</text>
+  <text x="552" y="164" class="m2">jtag3   0x43C30000</text>
+  <text x="552" y="184" class="m2">jtag4   0x43C40000</text>
+  <text x="552" y="204" class="m2">jtag5   0x43C50000</text>
+  <text x="552" y="224" class="m2">jtag6   0x43C60000</text>
+  <text x="552" y="244" class="m2">jtag7   0x43C70000</text>
+  <text x="552" y="264" class="m2">jtag8   0x43C80000</text>
+  <text x="552" y="284" class="m2">jtag9   0x43C90000</text>
+  <text x="552" y="304" class="m2">jtag10  0x43CA0000</text>
+  <text x="552" y="324" class="m2">jtag11  0x43CB0000</text>
+  <text x="552" y="352" class="s2">per engine: FIFO 128×32b, AXI-Lite slave</text>
+  <text x="552" y="370" class="s2">out tck/tms/tdi/tdo + chsel/bcast_en/bcmask</text>
+
+  <!-- ===== broadcast engine ===== -->
+  <line x1="470" y1="160" x2="540" y2="440" stroke="#8e44ad" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+  <text x="500" y="300" class="s2" transform="rotate(52 500 300)">M12</text>
+
+  <rect x="540" y="420" width="250" height="120" class="bce"/>
+  <text x="665" y="444" text-anchor="middle" class="h2" fill="#c0392b">jtag12 — broadcast engine</text>
+  <text x="552" y="466" class="m2">0x43CC0000</text>
+  <text x="552" y="486" class="s2">CTRL bit4      = bcast_en</text>
+  <text x="552" y="504" class="s2">CTRL[27:16]    = broadcast mask</text>
+  <text x="552" y="522" class="s2">CHSEL (0x3C)    = TDO source</text>
+  <text x="552" y="538" class="s2">TAG (0x14)     = 0xA7000000</text>
+
+  <!-- ===== mux ===== -->
+  <line x1="790" y1="220" x2="850" y2="220" stroke="#39b54a" stroke-width="2" marker-end="url(#g2)"/>
+  <line x1="790" y1="480" x2="850" y2="300" stroke="#e8873a" stroke-width="2" marker-end="url(#o2)"/>
+
+  <rect x="850" y="140" width="290" height="290" class="mx"/>
+  <text x="995" y="164" text-anchor="middle" class="h2">jtag_bcast_mux</text>
+  <text x="862" y="186" class="m2">input  bcast_en</text>
+  <text x="862" y="204" class="m2">input  bc_mask[11:0]</text>
+  <text x="862" y="222" class="m2">input  bc_tck/tms/tdi</text>
+  <text x="862" y="240" class="m2">input  tdo_sel[3:0]</text>
+  <text x="862" y="258" class="m2">input  ch_tck[11:0]</text>
+  <text x="862" y="276" class="m2">input  ch_tms[11:0]</text>
+  <text x="862" y="294" class="m2">input  ch_tdi[11:0]</text>
+  <text x="862" y="312" class="m2">input  ch_tdo[11:0]</text>
+  <text x="862" y="334" class="m2">output pin_tck[11:0]</text>
+  <text x="862" y="352" class="m2">output pin_tms[11:0]</text>
+  <text x="862" y="370" class="m2">output pin_tdi[11:0]</text>
+  <text x="862" y="388" class="m2">output bc_tdo</text>
+  <text x="862" y="412" class="rd">mask_eff = (bc_mask==0) ? 12'hFFF : bc_mask</text>
+
+  <!-- ===== xlslice / concat ===== -->
+  <line x1="1140" y1="285" x2="1190" y2="285" stroke="#4a90d9" stroke-width="2" marker-end="url(#a2)"/>
+
+  <rect x="1190" y="120" width="95" height="330" class="b" fill="#f0f8ff"/>
+  <text x="1237" y="142" text-anchor="middle" class="h2" transform="rotate(90 1237 142)">xlslice × 36</text>
+  <text x="1200" y="180" class="s2" transform="rotate(90 1200 180)">pin_tck[11:0] → 12 lanes</text>
+  <text x="1225" y="180" class="s2" transform="rotate(90 1225 180)">pin_tms[11:0] → 12 lanes</text>
+  <text x="1250" y="180" class="s2" transform="rotate(90 1250 180)">pin_tdi[11:0] → 12 lanes</text>
+
+  <!-- ===== pins ===== -->
+  <rect x="1060" y="470" width="225" height="120" class="b" fill="#fdf3e7"/>
+  <text x="1172" y="494" text-anchor="middle" class="h2">J20 / J21 (48 pin)</text>
+  <text x="1072" y="516" class="m2">jtagN_tck  (N=1..12)</text>
+  <text x="1072" y="534" class="m2">jtagN_tms</text>
+  <text x="1072" y="552" class="m2">jtagN_tdi</text>
+  <text x="1072" y="570" class="m2">jtagN_tdo</text>
+  <text x="1072" y="586" class="s2">LVCMOS33 · BANK34/35</text>
+
+  <line x1="1285" y1="285" x2="1285" y2="530" stroke="#4a90d9" stroke-width="1.6"/>
+  <line x1="1285" y1="530" x2="1285" y2="530" stroke="#4a90d9" stroke-width="1.6" marker-end="url(#a2)"/>
+
+  <!-- TDO back -->
+  <line x1="1172" y1="590" x2="1172" y2="440" stroke="#e8873a" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#o2)"/>
+  <text x="1184" y="660" class="s2">TDO readback</text>
+
+  <!-- ===== register map ===== -->
+  <rect x="30" y="200" width="230" height="380" class="b" fill="#fbfdff"/>
+  <text x="48" y="224" class="h2">Per-Engine Registers</text>
+  <text x="48" y="248" class="m2">0x00  LEN</text>
+  <text x="48" y="266" class="m2">0x04  TMS</text>
+  <text x="48" y="284" class="m2">0x08  TDI</text>
+  <text x="48" y="302" class="m2">0x0C  TDO</text>
+  <text x="48" y="320" class="m2">0x10  CTRL</text>
+  <text x="48" y="338" class="m2">0x14  DIV / TAG</text>
+  <text x="48" y="356" class="m2">0x18  DIV_RB</text>
+  <text x="48" y="374" class="m2">0x1C  TXD</text>
+  <text x="48" y="392" class="m2">0x20  RXD</text>
+  <text x="48" y="410" class="m2">0x24  STATUS</text>
+  <text x="48" y="428" class="m2">0x28  DONE</text>
+  <text x="48" y="446" class="m2">0x2C  PH</text>
+  <text x="48" y="464" class="m2">0x30  STATE</text>
+  <text x="48" y="482" class="m2">0x34  START</text>
+  <text x="48" y="500" class="m2">0x38  SEQ</text>
+  <text x="48" y="518" class="m2">0x3C  CHSEL</text>
+  <text x="48" y="536" class="m2">0x40  BCMASK (unconnected)</text>
+  <text x="48" y="560" class="s2">CTRL: bit0=start bit1=release</text>
+  <text x="48" y="576" class="s2">      bit2=clrFIFO bit4=bcast_en</text>
+
+  <!-- ===== engine internals ===== -->
+  <rect x="30" y="620" width="980" height="240" class="b" fill="#fffdf5"/>
+  <text x="48" y="644" class="h2">jtag_ctrl Internal Structure</text>
+
+  <rect x="60" y="662" width="150" height="60" class="b" fill="#eef5ff"/>
+  <text x="135" y="684" text-anchor="middle" class="s2">AXI-Lite slave</text>
+  <text x="135" y="702" text-anchor="middle" class="m2">aw/w/b/ar/r</text>
+
+  <line x1="210" y1="692" x2="250" y2="692" stroke="#4a90d9" stroke-width="1.6" marker-end="url(#a2)"/>
+
+  <rect x="250" y="662" width="150" height="60" class="b" fill="#eef5ff"/>
+  <text x="325" y="684" text-anchor="middle" class="s2">Register File</text>
+  <text x="325" y="702" text-anchor="middle" class="m2">len/tms/tdi/div/ctrl</text>
+
+  <line x1="400" y1="692" x2="440" y2="692" stroke="#4a90d9" stroke-width="1.6" marker-end="url(#a2)"/>
+
+  <rect x="440" y="662" width="150" height="60" class="b" fill="#eef5ff"/>
+  <text x="515" y="684" text-anchor="middle" class="s2">TX FIFO</text>
+  <text x="515" y="702" text-anchor="middle" class="m2">128 × 32 bit</text>
+
+  <line x1="590" y1="692" x2="630" y2="692" stroke="#39b54a" stroke-width="1.6" marker-end="url(#g2)"/>
+
+  <rect x="630" y="662" width="170" height="60" class="eng"/>
+  <text x="715" y="684" text-anchor="middle" class="s2">TAP FSM</text>
+  <text x="715" y="702" text-anchor="middle" class="m2">IDLE/LOAD/HIGH/LOW</text>
+
+  <line x1="800" y1="692" x2="840" y2="692" stroke="#39b54a" stroke-width="1.6" marker-end="url(#g2)"/>
+
+  <rect x="840" y="662" width="150" height="60" class="b" fill="#eef5ff"/>
+  <text x="915" y="684" text-anchor="middle" class="s2">RX FIFO</text>
+  <text x="915" y="702" text-anchor="middle" class="m2">128 × 32 bit</text>
+
+  <!-- tap pins -->
+  <line x1="715" y1="722" x2="715" y2="760" stroke="#e8873a" stroke-width="1.6" marker-end="url(#o2)"/>
+  <rect x="600" y="760" width="230" height="46" class="b" fill="#fdf3e7"/>
+  <text x="715" y="780" text-anchor="middle" class="m2">tck  tms  tdi  ←→  tdo</text>
+  <text x="715" y="797" text-anchor="middle" class="s2">output regs drive pins (see XDC)</text>
+
+  <text x="48" y="790" class="s2">TCK generation: clk(100MHz) / (2 × DIV), DIV=5 → 10 MHz</text>
+  <text x="48" y="810" class="s2">streaming: write TXD(0x1C) → HW shifts 32-bit blocks → read RXD(0x20)</text>
+  <text x="48" y="830" class="s2">STATUS(0x24) = {16'd0, rx_used[7:0], tx_free[7:0]}</text>
+  <text x="48" y="850" class="s2">SEQ(0x38) = {go_seq, seen_seq}: equal means shift complete</text>
+</svg>

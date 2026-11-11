@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1340" height="1420" viewBox="0 0 1340 1420"
+     font-family="DejaVu Sans, Arial, sans-serif">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6 z" fill="#4a5568"/></marker>
+    <marker id="ag" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6 z" fill="#2e8b57"/></marker>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6 z" fill="#c0392b"/></marker>
+    <marker id="ao" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L9,3 L0,6 z" fill="#d97706"/></marker>
+    <style>
+      .blue{fill:#e8f0fb;stroke:#2f6fb5;stroke-width:2.5}
+      .green{fill:#e7f6ec;stroke:#2e8b57;stroke-width:2.5}
+      .orange{fill:#fdf1e3;stroke:#d97706;stroke-width:2.5}
+      .red{fill:#fdeaea;stroke:#c0392b;stroke-width:2.5}
+      .purple{fill:#f3e8ff;stroke:#7c3aed;stroke-width:2.5}
+      .grey{fill:#f2f4f7;stroke:#7b8794;stroke-width:2}
+      .title{font-size:22px;font-weight:bold;fill:#111827}
+      .sub{font-size:12px;fill:#6b7280}
+      .panel{font-size:15px;font-weight:bold;fill:#111827}
+      .h{font-size:13px;font-weight:bold;fill:#111827}
+      .s{font-size:11px;fill:#4b5563}
+      .m{font-family:DejaVu Sans Mono,monospace;font-size:11px;fill:#111827}
+      .lab{font-size:10.5px;font-weight:bold;fill:#c0392b}
+      .labg{font-size:10.5px;font-weight:bold;fill:#2e8b57}
+      .labo{font-size:10.5px;font-weight:bold;fill:#b45309}
+      .labp{font-size:10.5px;font-weight:bold;fill:#7c3aed}
+    </style>
+  </defs>
+  <rect width="1340" height="1420" fill="#f8fafc"/>
+  <text x="670" y="34" text-anchor="middle" class="title">Single XVC Port / Broadcast Session State Machine (Final Design)</text>
+  <text x="670" y="56" text-anchor="middle" class="sub">Q1=pid file  Q2=manual reconnect  Q3=fast fail  Q4=CHSEL fix  Q5=clear bcast_en at boot  Q6=no empty mask</text>
+
+  <!-- ═══════════ A · TCP / Session ═══════════ -->
+  <rect x="24" y="72" width="1292" height="240" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5" rx="10"/>
+  <text x="40" y="98" class="panel">A · Connection Admission &amp; Session Lifecycle</text>
+
+  <rect x="44" y="116" width="150" height="66" class="grey" rx="10"/>
+  <text x="119" y="140" text-anchor="middle" class="h">LISTEN</text>
+  <text x="119" y="158" text-anchor="middle" class="m">13 sockets</text>
+
+  <line x1="194" y1="149" x2="240" y2="149" stroke="#4a5568" stroke-width="2.5" marker-end="url(#a)"/>
+  <text x="217" y="140" text-anchor="middle" class="s">connect</text>
+
+  <rect x="240" y="116" width="140" height="66" class="blue" rx="10"/>
+  <text x="310" y="140" text-anchor="middle" class="h">ACCEPT</text>
+  <text x="310" y="158" text-anchor="middle" class="m">accept()</text>
+
+  <line x1="380" y1="149" x2="424" y2="149" stroke="#4a5568" stroke-width="2.5" marker-end="url(#a)"/>
+
+  <path d="M492 116 L556 149 L492 182 L428 149 Z" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+  <text x="492" y="145" text-anchor="middle" class="s">bcast_en &amp;</text>
+  <text x="492" y="160" text-anchor="middle" class="m">mask[ch]?</text>
+
+  <!-- Yes → REFUSE -->
+  <line x1="556" y1="149" x2="600" y2="149" stroke="#c0392b" stroke-width="2.5" marker-end="url(#ar)"/>
+  <text x="578" y="140" text-anchor="middle" class="lab">Yes</text>
+  <rect x="600" y="116" width="160" height="66" class="red" rx="10"/>
+  <text x="680" y="140" text-anchor="middle" class="h" fill="#c0392b">REFUSE</text>
+  <text x="680" y="158" text-anchor="middle" class="m">close(cfd)</text>
+  <text x="680" y="175" text-anchor="middle" class="s">Q6: no fork</text>
+
+  <!-- No → channel child process -->
+  <path d="M492 182 L492 226 L660 226" fill="none" stroke="#2e8b57" stroke-width="2.5" marker-end="url(#ag)"/>
+  <text x="510" y="212" class="labg">No</text>
+  <rect x="660" y="193" width="230" height="66" class="green" rx="10"/>
+  <text x="775" y="217" text-anchor="middle" class="h">Channel child proc (fork)</text>
+  <text x="775" y="235" text-anchor="middle" class="m">write /tmp/xvcsrv-2546.pid</text>
+  <text x="775" y="252" text-anchor="middle" class="s">Q1: per-channel pid file</text>
+
+  <line x1="890" y1="226" x2="930" y2="226" stroke="#4a5568" stroke-width="2.5" marker-end="url(#a)"/>
+
+  <!-- broadcast session -->
+  <rect x="930" y="104" width="366" height="176" class="purple" rx="10"/>
+  <text x="948" y="130" class="h" fill="#7c3aed">Broadcast client connects 2542</text>
+  <text x="948" y="154" class="m">① wr(CTRL, 1)        ← close gate first</text>
+  <text x="948" y="176" class="m">② read pid file in mask → kill ← Q1</text>
+  <text x="948" y="198" class="m">③ write /tmp/xvcsrv-2542.pid</text>
+  <text x="948" y="220" class="m">④ handle_client() (session)</text>
+  <text x="948" y="242" class="m">⑤ wr(CTRL, 0) + delete pid file</text>
+  <text x="948" y="266" class="s">Q5: main() also clears CTRL at startup</text>
+
+  <!-- ═══════════ B · RTL FSM ═══════════ -->
+  <rect x="24" y="328" width="1292" height="418" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5" rx="10"/>
+  <text x="40" y="354" class="panel">B · RTL Engine FSM (jtag_ctrl.v, read 0x30[3:2]) — Option B: bit-boundary switch</text>
+
+  <rect x="56" y="376" width="240" height="100" class="blue" rx="12"/>
+  <text x="176" y="402" text-anchor="middle" class="h">S_IDLE  ·  state = 0</text>
+  <text x="70" y="426" class="m">tck = 0, running = 0</text>
+  <text x="70" y="446" class="s">wait for TX FIFO non-empty</text>
+  <text x="70" y="464" class="s">or go_seq ≠ seen_seq</text>
+
+  <rect x="440" y="370" width="340" height="132" class="green" rx="12"/>
+  <text x="610" y="396" text-anchor="middle" class="h">S_RUN  ·  state = 1</text>
+  <text x="454" y="420" class="m">ph: 0 .. ph_end</text>
+  <text x="454" y="440" class="s">ph=0        → drive TMS/TDI, TCK low</text>
+  <text x="454" y="458" class="s">ph=ph_rise  → TCK rising edge</text>
+  <text x="454" y="476" class="s">ph=ph_samp  → sample TDO</text>
+  <text x="454" y="494" class="s">ph=ph_end   → TCK falling edge, bits−1</text>
+
+  <rect x="440" y="560" width="340" height="130" class="orange" rx="12" stroke-width="3"/>
+  <text x="610" y="586" text-anchor="middle" class="h" fill="#b45309">S_BC  ·  state = 3</text>
+  <text x="454" y="608" class="s">channel taken over by broadcast (bcast_sel=1)</text>
+  <text x="454" y="628" class="m">tck=tms=tdi=0, running=0, tdo_q=0</text>
+  <text x="454" y="648" class="s">fifo_clr=1 (tx_rd←tx_wr, rx_rd←rx_wr)</text>
+  <text x="454" y="668" class="s">seen_seq←go_seq (absorb pending request)</text>
+  <text x="454" y="686" class="s">bcast_sel=0 → back to S_IDLE (no restore)</text>
+
+  <!-- transitions -->
+  <path d="M296 410 L440 410" fill="none" stroke="#2e8b57" stroke-width="2.5" marker-end="url(#ag)"/>
+  <text x="368" y="400" text-anchor="middle" class="labg">start &amp; !bcast_sel</text>
+
+  <path d="M440 470 L296 470" fill="none" stroke="#4a5568" stroke-width="2.5" marker-end="url(#a)"/>
+  <text x="368" y="462" text-anchor="middle" class="s">bits == 1</text>
+
+  <!-- S_RUN → S_BC (bit boundary) -->
+  <path d="M610 502 L610 560" fill="none" stroke="#d97706" stroke-width="3" marker-end="url(#ao)"/>
+  <text x="624" y="536" class="labo">bcast_sel: wait for ph_end (full falling edge)</text>
+
+  <!-- S_IDLE → S_BC -->
+  <path d="M176 476 L176 625 L440 625" fill="none" stroke="#d97706" stroke-width="2.5" marker-end="url(#ao)"/>
+  <text x="190" y="560" class="labo">bcast_sel</text>
+
+  <!-- S_BC → S_IDLE -->
+  <path d="M440 590 L250 590 L250 476" fill="none" stroke="#2e8b57" stroke-width="2.5" marker-end="url(#ag)"/>
+  <text x="300" y="582" text-anchor="middle" class="labg">!bcast_sel</text>
+
+  <!-- right side notes -->
+  <rect x="830" y="370" width="466" height="106" class="red" rx="10" stroke-opacity="0.45"/>
+  <text x="848" y="396" class="h" fill="#c0392b">Priority</text>
+  <text x="848" y="420" class="m">bcast_sel  &gt;  shift in progress  &gt;  start condition</text>
+  <text x="848" y="444" class="s">bcast_sel high in S_RUN: wait for the full TCK falling edge of the current bit</text>
+  <text x="848" y="462" class="s">then switch to S_BC, avoiding truncated clock pulses (Option B)</text>
+
+  <rect x="830" y="492" width="466" height="86" class="orange" rx="10"/>
+  <text x="848" y="516" class="h">S_RUN Pin Timing</text>
+  <text x="848" y="540" class="m">tck  ___|‾‾‾|___|‾‾‾|___      tms/tdi  =X===X===X=</text>
+  <text x="848" y="562" class="s">↑ ph_samp sample · TCK = 100 MHz / (2 × DIV)</text>
+
+  <rect x="830" y="594" width="466" height="96" class="grey" rx="10"/>
+  <text x="848" y="618" class="s">Broadcast engine (ch12): bcast_sel tied 0, never enters S_BC.</text>
+  <text x="848" y="640" class="s">Only ch0..ch11 can have pins "borrowed" by broadcast.</text>
+  <text x="848" y="662" class="s">In S_BC: busy=0, state=3, readable via 0x30.</text>
+
+  <!-- ═══════════ C · shift ═══════════ -->
+  <rect x="24" y="764" width="1292" height="250" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5" rx="10"/>
+  <text x="40" y="790" class="panel">C · Single shift Command Handling (handle_client → do_shift)</text>
+
+  <rect x="44" y="810" width="160" height="66" class="blue" rx="10"/>
+  <text x="124" y="834" text-anchor="middle" class="h">read shift cmd</text>
+  <text x="124" y="852" text-anchor="middle" class="m">len + tms[] + tdi[]</text>
+
+  <line x1="204" y1="843" x2="244" y2="843" stroke="#4a5568" stroke-width="2.5" marker-end="url(#a)"/>
+
+  <path d="M330 810 L400 843 L330 876 L260 843 Z" fill="#fdeaea" stroke="#c0392b" stroke-width="2"/>
+  <text x="330" y="839" text-anchor="middle" class="s">state ==</text>
+  <text x="330" y="854" text-anchor="middle" class="m">S_BC?</text>
+
+  <line x1="400" y1="843" x2="444" y2="843" stroke="#c0392b" stroke-width="2.5" marker-end="url(#ar)"/>
+  <text x="422" y="834" text-anchor="middle" class="lab">Yes</text>
+  <rect x="444" y="810" width="200" height="66" class="red" rx="10"/>
+  <text x="544" y="834" text-anchor="middle" class="h" fill="#c0392b">Fast fail Q3</text>
+  <text x="544" y="852" text-anchor="middle" class="m">return -1</text>
+  <text x="544" y="869" text-anchor="middle" class="s">return immediately, no wait</text>
+
+  <path d="M330 876 L330 920 L620 920" fill="none" stroke="#2e8b57" stroke-width="2.5" marker-end="url(#ag)"/>
+  <text x="350" y="906" class="labg">No</text>
+
+  <rect x="620" y="884" width="300" height="72" class="purple" rx="10"/>
+  <text x="770" y="908" text-anchor="middle" class="h" fill="#7c3aed">Broadcast branch (g_bcast)</text>
+  <text x="770" y="926" text-anchor="middle" class="m">CHSEL not in mask → fix Q4</text>
+  <text x="770" y="944" text-anchor="middle" class="s">write CHSEL only, leave bcast_en/BCMASK</text>
+
+  <line x1="920" y1="920" x2="960" y2="920" stroke="#4a5568" stroke-width="2" marker-end="url(#a)"/>
+  <rect x="960" y="884" width="270" height="72" class="green" rx="10"/>
+  <text x="1095" y="908" text-anchor="middle" class="h">do_shift_one()</text>
+  <text x="1095" y="926" text-anchor="middle" class="m">streaming / block</text>
+  <text x="1095" y="944" text-anchor="middle" class="s">wait go_seq==seen_seq → return TDO</text>
+
+  <!-- ═══════════ D · session timeline ═══════════ -->
+  <rect x="24" y="1034" width="1292" height="300" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5" rx="10"/>
+  <text x="40" y="1060" class="panel">D · Broadcast Session Timeline (bcast_en held 1 during session)</text>
+
+  <rect x="44" y="1078" width="1252" height="230" class="purple" rx="10"/>
+  <text x="64" y="1104" class="h" fill="#7c3aed">Timeline</text>
+
+  <text x="64" y="1130" class="m">Broadcast client connects 2542 ──────────────────────────────────────────────────────────────┐</text>
+  <text x="64" y="1154" class="m">① wr(0x43CD0000, 1)   bcast_en = 1   ← close gate first, new channels get REFUSE ✓</text>
+  <text x="64" y="1178" class="m">② kill pid file of masked channels         ← only affected channels Q1</text>
+  <text x="64" y="1202" class="m">③ write /tmp/xvcsrv-2542.pid</text>
+  <text x="64" y="1226" class="m">④ handle_client() loop: shift → shift → ...</text>
+  <text x="64" y="1250" class="m">   each shift writes CHSEL, hardware routes</text>
+  <text x="64" y="1274" class="m">⑤ client disconnects → wr(0x43CD0000, 0) → bcast_en = 0 → channels back to S_IDLE ✓</text>
+
+  <line x1="64" y1="1288" x2="1276" y2="1288" stroke="#7c3aed" stroke-width="1" stroke-opacity="0.3"/>
+  <text x="64" y="1306" class="s">Meanwhile: every channel engine with bcast_en=1 and mask[ch]=1 stays in S_BC; jtag_repeater routes its TCK/TMS/TDI to the broadcast engine.</text>
+
+  <text x="670" y="1400" text-anchor="middle" class="s">XJSM-P12-Z7000 · 2026-11-02 · jtag_ctrl.v / jtag_repeater.v / jtag_bcast_regs.v / xvcserver_g1.c / index.html</text>
+</svg>

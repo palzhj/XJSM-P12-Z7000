@@ -1,0 +1,100 @@
+#!/bin/sh
+# XVC console CGI
+printf 'Content-Type: text/plain\r\nCache-Control: no-store\r\n\r\n'
+
+urldecode() { printf '%b' "$(echo "$1" | sed 's/+/ /g; s/%/\\x/g')"; }
+
+cmd=$(echo "$QUERY_STRING" | sed -n 's/.*cmd=\([^&]*\).*/\1/p')
+cmd=$(urldecode "$cmd")
+
+getp() { echo "$QUERY_STRING" | sed -n "s/.*$1=\([^&]*\).*/\1/p" | head -1; }
+
+case "$cmd" in
+  start)
+    if pidof xvcserver_g1 >/dev/null 2>&1; then
+      echo "already running"
+    else
+      /usr/bin/xvcserver_g1 -a 0x43C00000 -d 5 > /tmp/xvcserver.log 2>&1 &
+      sleep 1
+      echo "started"
+    fi
+    ;;
+  stop)
+    PIDS=$(pidof xvcserver_g1 2>/dev/null)
+    if [ -n "$PIDS" ]; then
+      kill $PIDS 2>/dev/null          # kill them all (parent + child processes)
+      sleep 0.8
+      PIDS=$(pidof xvcserver_g1 2>/dev/null)
+      [ -n "$PIDS" ] && kill -9 $PIDS 2>/dev/null
+      echo "stopped"
+    else
+      echo "not running"
+    fi
+    ;;
+  restart)
+    PIDS=$(pidof xvcserver_g1 2>/dev/null)
+    [ -n "$PIDS" ] && { kill $PIDS 2>/dev/null; sleep 0.8; PIDS=$(pidof xvcserver_g1 2>/dev/null); [ -n "$PIDS" ] && kill -9 $PIDS 2>/dev/null; }
+    sleep 0.5
+    /usr/bin/xvcserver_g1 -a 0x43C00000 -d 5 > /tmp/xvcserver.log 2>&1 &
+    sleep 1.2
+    echo "restarted"
+    ;;
+  div)
+    v=$(getp v)
+    if [ -n "$v" ]; then
+      # return only "X.XXX MHz", dropping the div= debug info from xvcinfo
+      out=$(/usr/bin/xvcinfo div "$(urldecode "$v")" 2>/dev/null)
+      mhz=$(echo "$out" | sed -n 's/.*(\([0-9.]*\) MHz).*/\1/p')
+      if [ -n "$mhz" ]; then echo "${mhz} MHz"; else echo "$out"; fi
+    else
+      echo "missing value"
+    fi
+    ;;
+  setnet)
+    ip=$(urldecode "$(getp ip)")
+    mask=$(urldecode "$(getp mask)")
+    gw=$(urldecode "$(getp gw)")
+    [ -z "$ip" ] && { echo "missing ip"; exit 0; }
+    [ -z "$mask" ] && mask=255.255.255.0
+    [ -z "$gw" ] && gw=192.168.1.1
+    /usr/bin/xvcinfo setnet "$ip" "$mask" "$gw" >/dev/null 2>&1
+    sleep 1
+    now=$(ifconfig eth0 2>/dev/null | sed -n 's/.*inet addr:\([0-9.]*\).*/\1/p' | head -1)
+    if [ "$now" = "$ip" ]; then echo "ip=$now"; else echo "failed: ip=$now"; fi
+    ;;
+  dhcp)    /usr/bin/xvcinfo setnet dhcp ;;
+  setchsel)
+    v=$(getp v)
+    if [ -n "$v" ]; then
+        devmem 0x43CD0008 32 "$v" >/dev/null 2>&1
+        echo "chsel=$v"
+    else
+        echo "missing value"
+    fi
+    ;;
+  setbcmask)
+    v=$(urldecode "$(getp v)")
+    if [ -z "$v" ]; then echo "missing value"; exit 0; fi
+    # read the old mask -> compute newly added bits -> kill existing sessions on those channels
+    old=$(/usr/bin/xvcinfo json 2>/dev/null | sed -n 's/.*"bcmask":\([0-9]*\).*/\1/p')
+    [ -z "$old" ] && old=0
+    /usr/bin/xvcinfo setbcmask "$v"
+    added=$(( v & ~old ))
+    i=0
+    while [ $i -lt 12 ]; do
+      if [ $(( (added >> i) & 1 )) -eq 1 ]; then
+        pf="/tmp/xvcsrv-$((2543+i)).pid"
+        if [ -f "$pf" ]; then
+          pid=$(cat "$pf" 2>/dev/null)
+          if [ -n "$pid" ] && kill "$pid" 2>/dev/null; then
+            echo "killed ch$i (pid $pid)"
+          fi
+        fi
+      fi
+      i=$((i+1))
+    done
+    ;;
+
+  setbcast) v=$(getp v); [ -n "$v" ] && /usr/bin/xvcinfo setbcast "$(urldecode "$v")" || echo "missing value" ;;
+  *)       echo "unknown cmd: $cmd" ;;
+esac

@@ -1,0 +1,27 @@
+/include/ "system-conf.dtsi"
+/ {
+	/* Kernel boot arguments
+	 * - earlycon / console: serial output (PS UART1 = MIO48/49, 115200)
+	 * - clk_ignore_unused: keep unused clocks running so PL/UIO still work
+	 * - uio_pdrv_genirq.of_id: bind PL generic-uio nodes to the uio driver
+	 */
+	chosen {
+		bootargs = "earlycon console=ttyPS0,115200 clk_ignore_unused uio_pdrv_genirq.of_id=generic-uio";
+	};
+};
+
+/* Front-panel SSD1315 OLED (design doc §4.4).
+ *
+ * PS I2C1 is routed through EMIO to PL pins by xvc/vivado/build_g1_oled.tcl
+ * (J20-35/V15 = SCL, J20-33/U20 = SDA), so the controller lives at
+ * 0xE0005000 with no MIO pads behind it.  The userspace jsmdisp driver talks
+ * to it through /dev/i2c-1 at address 0x3C.
+ *
+ * 100 kHz is deliberate: the FPGA IOB weak pull-up (~10-50k) cannot meet the
+ * 400 kHz rise-time limit.  Fit 2.2k external pull-ups to 3.3 V before
+ * raising clock-frequency.
+ */
+&i2c1 {
+	status = "okay";
+	clock-frequency = <100000>;
+};

@@ -1,0 +1,22 @@
+#!/bin/sh
+# XVC web console + XVC server autostart
+case "$1" in
+  start)
+    echo "Starting XVC web console ..."
+    mkdir -p /var/www
+    [ -d /var/www/cgi-bin ] || cp -r /usr/share/xvcweb/www/* /var/www/ 2>/dev/null
+    /usr/bin/xvcserver_g1 -a 0x43C00000 -d 5 > /tmp/xvcserver.log 2>&1 &
+    httpd -p 80 -h /var/www
+    ;;
+  stop)
+    kill $(pidof httpd) 2>/dev/null
+    kill $(pidof xvcserver_g1) 2>/dev/null
+    ;;
+  restart)
+    $0 stop; sleep 1; $0 start
+    ;;
+  *)
+    echo "usage: $0 {start|stop|restart}"; exit 1
+    ;;
+esac
+exit 0

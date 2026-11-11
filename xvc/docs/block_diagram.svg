@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" font-family="DejaVu Sans, Arial, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L9,3 L0,6 z" fill="#4a90d9"/>
+    </marker>
+    <marker id="arrg" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L9,3 L0,6 z" fill="#39b54a"/>
+    </marker>
+    <marker id="arro" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L9,3 L0,6 z" fill="#e8873a"/>
+    </marker>
+    <style>
+      .box   { fill:#ffffff; stroke:#4a5568; stroke-width:2; rx:8; }
+      .ps    { fill:#e8f0fb; stroke:#4a90d9; stroke-width:2; rx:8; }
+      .pl    { fill:#eaf7ec; stroke:#39b54a; stroke-width:2; rx:8; }
+      .ext   { fill:#fdf3e7; stroke:#e8873a; stroke-width:2; rx:8; }
+      .title { font-size:20px; font-weight:bold; fill:#2d3748; }
+      .lbl   { font-size:13px; fill:#2d3748; }
+      .sm    { font-size:11px; fill:#4a5568; }
+      .mono  { font-family:DejaVu Sans Mono, monospace; font-size:11px; fill:#2d3748; }
+      .hf    { font-size:14px; font-weight:bold; fill:#2d3748; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="900" fill="#f7f9fc"/>
+  <text x="600" y="32" text-anchor="middle" class="title">XJSM-P12-Z7000 · 12-Channel XVC Architecture</text>
+  <text x="600" y="52" text-anchor="middle" class="sm">Zynq XC7Z020 · XVC over Ethernet · 12 independent TAP engines · shared TCK/TMS/TDI broadcast</text>
+
+  <!-- ============ PC ============ -->
+  <rect x="40" y="90" width="200" height="110" class="box"/>
+  <text x="140" y="118" text-anchor="middle" class="hf">Host PC</text>
+  <text x="140" y="140" text-anchor="middle" class="sm">Vivado / xsdb / hw_server</text>
+  <text x="140" y="160" text-anchor="middle" class="mono">192.168.1.50</text>
+  <text x="140" y="182" text-anchor="middle" class="sm">open_hw_target -xvc_url</text>
+
+  <!-- Ethernet -->
+  <line x1="240" y1="145" x2="330" y2="145" stroke="#4a90d9" stroke-width="3" marker-end="url(#arr)"/>
+  <text x="285" y="135" text-anchor="middle" class="sm">Ethernet</text>
+  <text x="285" y="165" text-anchor="middle" class="mono">2542 / 2543-2554</text>
+
+  <!-- ============ Zynq PS ============ -->
+  <rect x="330" y="70" width="330" height="150" class="ps"/>
+  <text x="495" y="96" text-anchor="middle" class="hf">Zynq PS (Cortex-A9)</text>
+  <text x="495" y="118" text-anchor="middle" class="sm">Linux 6.1.5 · eth0 · custom rootfs</text>
+  <text x="345" y="145" class="mono">xvcserver_g1</text>
+  <text x="345" y="163" class="sm">13 sockets: 2542 (bcast) + 2543..2554</text>
+  <text x="345" y="182" class="sm">/usr/bin/xvcserver_g1 -a 0x43C00000 -d 5</text>
+  <text x="345" y="201" class="mono">xvcweb (httpd :80 + CGI)</text>
+
+  <!-- AXI -->
+  <line x1="660" y1="145" x2="740" y2="145" stroke="#4a90d9" stroke-width="3" marker-end="url(#arr)"/>
+  <text x="700" y="135" text-anchor="middle" class="sm">AXI GP0</text>
+  <text x="700" y="165" text-anchor="middle" class="mono">0x43C00000</text>
+
+  <!-- ============ PL ============ -->
+  <rect x="740" y="60" width="420" height="420" class="pl"/>
+  <text x="950" y="86" text-anchor="middle" class="hf">PL — 12 × jtag_ctrl engines</text>
+  <text x="950" y="106" text-anchor="middle" class="sm">each engine @ 0x43C00000 + ch×0x10000</text>
+
+  <!-- engine grid -->
+  <g>
+    <!-- row 1: ch0..ch3 -->
+    <rect x="758" y="122" width="88" height="54" class="box"/><text x="802" y="142" text-anchor="middle" class="sm">ch0</text><text x="802" y="160" text-anchor="middle" class="mono">0x…0000</text>
+    <rect x="856" y="122" width="88" height="54" class="box"/><text x="900" y="142" text-anchor="middle" class="sm">ch1</text><text x="900" y="160" text-anchor="middle" class="mono">0x…10000</text>
+    <rect x="954" y="122" width="88" height="54" class="box"/><text x="998" y="142" text-anchor="middle" class="sm">ch2</text><text x="998" y="160" text-anchor="middle" class="mono">0x…20000</text>
+    <rect x="1052" y="122" width="88" height="54" class="box"/><text x="1096" y="142" text-anchor="middle" class="sm">ch3</text><text x="1096" y="160" text-anchor="middle" class="mono">0x…30000</text>
+    <!-- row 2 -->
+    <rect x="758" y="186" width="88" height="54" class="box"/><text x="802" y="206" text-anchor="middle" class="sm">ch4</text><text x="802" y="224" text-anchor="middle" class="mono">0x…40000</text>
+    <rect x="856" y="186" width="88" height="54" class="box"/><text x="900" y="206" text-anchor="middle" class="sm">ch5</text><text x="900" y="224" text-anchor="middle" class="mono">0x…50000</text>
+    <rect x="954" y="186" width="88" height="54" class="box"/><text x="998" y="206" text-anchor="middle" class="sm">ch6</text><text x="998" y="224" text-anchor="middle" class="mono">0x…60000</text>
+    <rect x="1052" y="186" width="88" height="54" class="box"/><text x="1096" y="206" text-anchor="middle" class="sm">ch7</text><text x="1096" y="224" text-anchor="middle" class="mono">0x…70000</text>
+    <!-- row 3 -->
+    <rect x="758" y="250" width="88" height="54" class="box"/><text x="802" y="270" text-anchor="middle" class="sm">ch8</text><text x="802" y="288" text-anchor="middle" class="mono">0x…80000</text>
+    <rect x="856" y="250" width="88" height="54" class="box"/><text x="900" y="270" text-anchor="middle" class="sm">ch9</text><text x="900" y="288" text-anchor="middle" class="mono">0x…90000</text>
+    <rect x="954" y="250" width="88" height="54" class="box"/><text x="998" y="270" text-anchor="middle" class="sm">ch10</text><text x="998" y="288" text-anchor="middle" class="mono">0x…A0000</text>
+    <rect x="1052" y="250" width="88" height="54" class="box"/><text x="1096" y="270" text-anchor="middle" class="sm">ch11</text><text x="1096" y="288" text-anchor="middle" class="mono">0x…B0000</text>
+  </g>
+
+  <!-- engine internals note -->
+  <rect x="758" y="320" width="382" height="140" class="box" fill="#fbfdff"/>
+  <text x="768" y="342" class="hf">Per-Engine Registers</text>
+  <text x="768" y="362" class="mono">0x00 LEN   0x04 TMS   0x08 TDI   0x0C TDO</text>
+  <text x="768" y="380" class="mono">0x10 CTRL  0x14 DIV   0x18 DIV_RB</text>
+  <text x="768" y="398" class="mono">0x1C TXD   0x20 RXD   0x24 STATUS</text>
+  <text x="768" y="416" class="mono">0x28 DONE  0x2C PH    0x30 STATE</text>
+  <text x="768" y="434" class="mono">0x34 START 0x38 SEQ</text>
+  <text x="768" y="452" class="mono">0x3C CHSEL 0x40 BCMASK(not impl)</text>
+
+  <!-- ============ wires to headers ============ -->
+  <line x1="950" y1="480" x2="950" y2="520" stroke="#39b54a" stroke-width="3"/>
+  <text x="962" y="504" class="sm">TCK/TMS/TDI shared + TDO separate</text>
+
+  <!-- ============ J20/J21 header ============ -->
+  <rect x="700" y="520" width="460" height="120" class="ext"/>
+  <text x="930" y="546" text-anchor="middle" class="hf">J20 / J21 Expansion Header (48 pin)</text>
+  <text x="720" y="570" class="sm">12 sets × (TCK, TMS, TDI, TDO, GND)</text>
+  <text x="720" y="590" class="mono">jtag1_* … jtag12_*</text>
+  <text x="720" y="612" class="sm">⚠ TCK/TMS/TDI externally shorted (one group)</text>
+  <text x="720" y="630" class="sm">TDO separate; CHSEL selects the readback lane</text>
+
+  <!-- ============ target chain ============ -->
+  <line x1="930" y1="640" x2="930" y2="686" stroke="#e8873a" stroke-width="3" marker-end="url(#arro)"/>
+  <rect x="700" y="686" width="460" height="110" class="ext"/>
+  <text x="930" y="712" text-anchor="middle" class="hf">External JTAG Chain</text>
+  <text x="720" y="736" class="sm">AMD Xilinx FPGA chain</text>
+  <text x="720" y="758" class="mono">TDI → K7 → TDO/TDI → A7 → TDO</text>
+  <text x="720" y="780" class="sm">program 91.5 Mbit ≈ 10.27 s @ 10 MHz</text>
+
+  <!-- ============ broadcast callout ============ -->
+  <rect x="40" y="320" width="620" height="200" class="box" fill="#fffdf5"/>
+  <text x="58" y="346" class="hf">Broadcast Path (single engine)</text>
+  <text x="58" y="372" class="sm">1. server runs the shift on engine ch0 only</text>
+  <text x="58" y="392" class="sm">2. TCK/TMS/TDI are externally shorted → all 12 ports see one waveform</text>
+  <text x="58" y="412" class="sm">3. CHSEL (0x3C) picks the TDO readback lane (default ch0 = G1)</text>
+  <text x="58" y="432" class="sm">4. 12 devices shift in true parallel → time = single-channel time</text>
+  <text x="58" y="462" class="mono" fill="#c0392b">old: 12 serial do_shift_one → 12× slower ✗</text>
+  <text x="58" y="484" class="mono" fill="#27ae60">new: 1× do_shift_one(ch0) + CHSEL  → 12× faster ✓</text>
+  <text x="58" y="508" class="sm">(source updated, pending cross-compile into image)</text>
+
+  <!-- ============ legend ============ -->
+  <rect x="40" y="560" width="620" height="90" class="box" fill="#ffffff"/>
+  <text x="58" y="584" class="hf">Legend</text>
+  <rect x="58" y="596" width="22" height="14" class="ps"/><text x="88" y="608" class="sm">PS (ARM / Linux)</text>
+  <rect x="220" y="596" width="22" height="14" class="pl"/><text x="250" y="608" class="sm">PL (FPGA logic)</text>
+  <rect x="380" y="596" width="22" height="14" class="ext"/><text x="410" y="608" class="sm">External interface / target device</text>
+  <text x="58" y="634" class="sm">Ports: 2542 broadcast · 2543-2554 channels 0-11 · 80 Web</text>
+
+  <!-- ============ bottom notes ============ -->
+  <rect x="40" y="686" width="620" height="110" class="box" fill="#f4f8ff"/>
+  <text x="58" y="712" class="hf">Performance</text>
+  <text x="58" y="734" class="mono">single:  10.27 s / 91.5 Mbit  (20/20 stable)</text>
+  <text x="58" y="754" class="mono">bcast:   serial 12× ✗ → single engine T ✓ (pending build)</text>
+  <text x="58" y="774" class="mono">TCK:     10 MHz (DIV=5, 100 MHz / (2×5))</text>
+
+  <text x="600" y="880" text-anchor="middle" class="sm">XJSM-P12-Z7000 · AC7Z020 + AX7Z020B · Vivado 2023.1 / PetaLinux 2023.1</text>
+</svg>

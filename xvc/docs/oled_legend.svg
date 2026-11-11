@@ -1,0 +1,281 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1010" height="994" viewBox="0 0 1010 994" font-family="DejaVu Sans,Arial,sans-serif">
+<rect width="1010" height="994" fill="#f8fafc"/>
+<text x="505" y="42" text-anchor="middle" font-size="22" font-weight="bold" fill="#111827">OLED Symbol Legend</text>
+<text x="40" y="100" font-size="15.5" font-weight="bold" fill="#1d4ed8">Port box · basic states (live)</text>
+<rect x="38" y="126" width="88" height="88" fill="#151515" rx="4"/>
+<rect x="42" y="130" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="130" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="130" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="130" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="130" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="130" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="130" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="130" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="140" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="140" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="150" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="150" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="160" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="160" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="170" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="170" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="180" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="180" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="190" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="190" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="200" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="200" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="200" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="200" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="200" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="200" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="200" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="200" width="10" height="10" fill="#7ee787"/>
+<text x="190" y="152" font-size="16.5" font-weight="bold" fill="#111827">Hollow square</text>
+<text x="190" y="176" font-size="13.5" fill="#374151">no client connected</text>
+<text x="190" y="197" font-size="12.5" fill="#6b7280">port idle</text>
+<rect x="38" y="238" width="88" height="88" fill="#151515" rx="4"/>
+<rect x="42" y="242" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="242" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="242" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="242" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="242" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="242" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="242" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="242" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="252" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="252" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="252" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="252" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="252" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="252" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="252" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="252" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="262" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="262" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="262" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="262" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="262" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="262" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="262" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="262" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="272" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="272" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="272" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="272" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="272" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="272" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="272" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="272" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="282" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="282" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="282" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="282" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="282" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="282" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="282" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="282" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="292" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="292" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="292" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="292" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="292" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="292" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="292" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="292" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="302" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="302" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="302" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="302" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="302" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="302" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="302" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="302" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="312" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="312" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="312" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="312" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="312" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="312" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="312" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="312" width="10" height="10" fill="#7ee787"/>
+<text x="190" y="264" font-size="16.5" font-weight="bold" fill="#111827">Solid square</text>
+<text x="190" y="288" font-size="13.5" fill="#374151">XVC client connected</text>
+<text x="190" y="309" font-size="12.5" fill="#6b7280">port occupied</text>
+<rect x="38" y="350" width="88" height="88" fill="#151515" rx="4"/>
+<rect x="42" y="354" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="354" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="354" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="354" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="354" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="354" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="354" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="354" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="364" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="364" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="374" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="374" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="384" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="384" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="384" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="384" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="394" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="394" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="394" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="394" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="404" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="404" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="414" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="414" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="424" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="424" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="424" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="424" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="424" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="424" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="424" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="424" width="10" height="10" fill="#7ee787"/>
+<text x="190" y="376" font-size="16.5" font-weight="bold" fill="#111827">Frame + center dot</text>
+<text x="190" y="400" font-size="13.5" fill="#374151">in broadcast mask and session active</text>
+<text x="190" y="421" font-size="12.5" fill="#6b7280">used by broadcast</text>
+<text x="40" y="482" font-size="15.5" font-weight="bold" fill="#1d4ed8">Port box · TDO indicator (1Hz blinking center dot)</text>
+<rect x="38" y="508" width="88" height="88" fill="#151515" rx="4"/>
+<rect x="42" y="512" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="512" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="512" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="512" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="512" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="512" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="512" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="512" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="522" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="522" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="532" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="532" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="542" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="542" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="542" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="542" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="552" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="552" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="552" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="552" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="562" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="562" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="572" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="572" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="582" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="582" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="582" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="582" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="582" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="582" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="582" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="582" width="10" height="10" fill="#7ee787"/>
+<text x="190" y="534" font-size="16.5" font-weight="bold" fill="#111827">Hollow + white dot</text>
+<text x="190" y="558" font-size="13.5" fill="#374151">this port is the TDO source</text>
+<text x="190" y="579" font-size="12.5" fill="#6b7280">blinks on</text>
+<rect x="38" y="620" width="88" height="88" fill="#151515" rx="4"/>
+<rect x="42" y="624" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="624" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="624" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="624" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="624" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="624" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="624" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="624" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="634" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="634" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="634" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="634" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="634" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="634" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="634" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="634" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="644" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="644" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="644" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="644" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="644" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="644" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="644" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="644" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="654" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="654" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="654" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="654" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="654" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="654" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="664" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="664" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="664" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="664" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="664" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="664" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="674" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="674" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="674" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="674" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="674" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="674" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="674" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="674" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="684" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="684" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="684" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="684" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="684" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="684" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="684" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="684" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="694" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="694" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="694" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="694" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="694" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="694" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="694" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="694" width="10" height="10" fill="#7ee787"/>
+<text x="190" y="646" font-size="16.5" font-weight="bold" fill="#111827">Solid + black dot</text>
+<text x="190" y="670" font-size="13.5" fill="#374151">this port is the TDO source</text>
+<text x="190" y="691" font-size="12.5" fill="#6b7280">blinks (inverted dot on solid fill)</text>
+<text x="40" y="752" font-size="15.5" font-weight="bold" fill="#1d4ed8">BC row · fixed legend</text>
+<rect x="38" y="778" width="88" height="88" fill="#151515" rx="4"/>
+<rect x="42" y="782" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="782" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="782" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="782" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="782" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="782" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="782" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="782" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="792" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="792" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="802" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="802" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="812" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="812" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="812" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="812" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="822" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="822" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="822" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="822" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="832" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="832" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="842" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="842" width="10" height="10" fill="#7ee787"/>
+<rect x="42" y="852" width="10" height="10" fill="#7ee787"/>
+<rect x="52" y="852" width="10" height="10" fill="#7ee787"/>
+<rect x="62" y="852" width="10" height="10" fill="#7ee787"/>
+<rect x="72" y="852" width="10" height="10" fill="#7ee787"/>
+<rect x="82" y="852" width="10" height="10" fill="#7ee787"/>
+<rect x="92" y="852" width="10" height="10" fill="#7ee787"/>
+<rect x="102" y="852" width="10" height="10" fill="#7ee787"/>
+<rect x="112" y="852" width="10" height="10" fill="#7ee787"/>
+<text x="190" y="804" font-size="16.5" font-weight="bold" fill="#111827">Frame + center dot (steady)</text>
+<text x="190" y="828" font-size="13.5" fill="#374151">fixed legend = broadcast port</text>
+<text x="190" y="849" font-size="12.5" fill="#6b7280">never blinks</text>
+<text x="40" y="952" font-size="12.5" fill="#4b5563">IP row: 6×24 font, left aligned x=1, raw IP string as-is (no padding)</text>
+<text x="40" y="972" font-size="12.5" fill="#4b5563">BC row: BC text + fixed legend + frequency (right aligned to x=127), no connection count</text>
+</svg>

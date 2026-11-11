@@ -1,0 +1,5 @@
+835b415252fe70d7b8522620578bda28  BOOT.BIN
+d8685f5975a001ffd71e3eea0e7f11ee  image.ub
+7272de4272ca910779471c30b0d86584  system.bit
+c5f8d2e9a5f471ed15ae3c19042f2fbc  system.xsa
+f27e52a4c50fbbf7023fa0b79100ef09  xvc_v16.tar.gz

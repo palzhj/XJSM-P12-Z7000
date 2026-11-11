@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+# xvcserver - Xilinx Virtual Cable server (Debug Bridge / UIO)
+#
+DAEMON=/usr/bin/xvcserver
+PIDFILE=/var/run/xvcserver.pid
+ARGS="-a 0x43C00000 -d 5"
+
+start() {
+    # Zynq PS UART is ttyPS0: allow root login on it before anyone tries
+    [ -f /etc/securetty ] || touch /etc/securetty
+    grep -qx ttyPS0 /etc/securetty 2>/dev/null || echo ttyPS0 >> /etc/securetty
+    echo -n "Starting xvcserver: "
+    start-stop-daemon -S -q -x $DAEMON -b -m -p $PIDFILE -- $ARGS
+    echo "done"
+}
+
+stop() {
+    echo -n "Stopping xvcserver: "
+    start-stop-daemon -K -q -p $PIDFILE
+    echo "done"
+}
+
+case "$1" in
+    start) start ;;
+    stop) stop ;;
+    restart) stop; sleep 1; start ;;
+    *) echo "usage: $0 {start|stop|restart}"; exit 1 ;;
+esac
