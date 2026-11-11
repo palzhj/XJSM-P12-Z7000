@@ -125,7 +125,7 @@ test_bits/                      test bitstreams
 | [`xvc/docs/STATUS.md`](xvc/docs/STATUS.md) | Overall project status, versions, checksums |
 | [`xvc/docs/BLOCK_DIAGRAM.md`](xvc/docs/BLOCK_DIAGRAM.md) | System / RTL block diagram, state machine |
 | [`xvc/docs/BUILD_DEPLOY_GUIDE.md`](xvc/docs/BUILD_DEPLOY_GUIDE.md) | Complete build & deployment guide |
-| [`xvc/docs/KNOWN_ISSUES.md`](xvc/docs/KNOWN_ISSUES.md) | **34 pitfalls hit** (with root cause and fix) |
+| [`xvc/docs/KNOWN_ISSUES.md`](xvc/docs/KNOWN_ISSUES.md) | **35 pitfalls hit** (with root cause and fix) |
 | [`xvc/docs/PETALINUX_LOCAL_BUILD.md`](xvc/docs/PETALINUX_LOCAL_BUILD.md) | Offline PetaLinux build |
 | [`xvc/tests/README.md`](xvc/tests/README.md) | Test suite description |
 | [`NOTICE`](NOTICE) | Third-party content and licensing notes |
@@ -174,9 +174,91 @@ Broadcast register block `0x43CD0000`:
 | IOB | 48 / 125 |
 | WNS / WHS | +0.307 ns / +0.048 ns |
 | Failing endpoints | 0 |
-| Shift throughput | 5.6–9.0 Mbit/s (TCK 10 MHz) |
+| Shift throughput | 5.6–9.0 Mbit/s at TCK 10 MHz (see *How the Performance Is Achieved*) |
 | Per-shift latency | 0.21–0.26 ms (6 bit) |
 | Full bitstream (measured on a Kintex-7 325T) | 91.5 Mbit / **15.9 s** |
+
+---
+
+## How the Performance Is Achieved
+
+The numbers above are not luck — they come from moving work out of software and
+into the PL. Four mechanisms do the heavy lifting.
+
+### 1. Hardware TCK generation, not bit-banging
+
+The CPU **never** toggles a JTAG pin. `jtag_ctrl` owns a phase counter clocked by
+the 100 MHz PL clock and derives TCK from it:
+
+```
+TCK half period = DIV cycles        →        TCK = 100 MHz / (2 · DIV)
+```
+
+A 32-bit chunk therefore costs the CPU only **four register writes and one read**
+(LEN, TMS, TDI, CTRL.start → TDO); the 32 TCK edges happen entirely in hardware.
+That is the difference between "software toggling at a few hundred kHz" and a
+10 MHz line rate.
+
+### 2. 32-bit parallel shift per transaction
+
+Each `shift` command is decomposed into 32-bit chunks. One chunk is one AXI4-Lite
+burst into the engine, and the engine shifts all 32 bits back-to-back with a
+single continuous TCK burst — no per-bit round trip, no CPU involvement.
+
+### 3. Broadcast engine: twelve targets program at once
+
+This is the biggest win, and the reason the design has a 13th engine.
+
+`jtag_bcast_mux` does not replicate the shift; it **steers** it:
+
+```verilog
+assign follow[i]  = bcast_en & bcmask_eff[i];
+assign pin_tck[i] = follow[i] ? bc_tck : ch_tck[i];
+assign pin_tms[i] = follow[i] ? bc_tms : ch_tms[i];
+assign pin_tdi[i] = follow[i] ? bc_tdi : ch_tdi[i];
+```
+
+Every channel in the mask sees the **same TCK/TMS/TDI**, each with its own
+**independent TDO**. Programming 12 identical boards therefore takes **the same
+wall-clock time as programming one** — a straight 12× on a production line.
+
+### 4. Deep transmit/receive FIFOs
+
+`jtag_ctrl` contains a **128 × 32-bit TX** and a **128 × 32-bit RX** FIFO with
+modulo-256 pointers and hardware full/empty guards. `0x1C TXD` pushes a TDI word,
+`0x20 RXD` pops a TDO word, and `0x24 STATUS` reports `tx_free` / `rx_used` so
+software can pace itself without polling the engine state.
+
+The engine is also wired for **autonomous streaming**: in `S_IDLE`, whenever the
+TX FIFO is non-empty it starts a 32-bit chunk by itself (`TMS` forced to 0, `TDI`
+taken straight from the FIFO), then pushes the captured TDO into the RX FIFO —
+one hardware shift per queued word, with no software trigger at all.
+
+> **Current status**: the FIFO registers, pointers and autonomous-streaming
+> logic are all present and used for buffering, but the server's
+> zero-TMS streaming path is **disabled** (see
+> [`KNOWN_ISSUES.md`](xvc/docs/KNOWN_ISSUES.md)); every shift takes the 32-bit
+> chunked path described above. Measured throughput reflects that.
+
+### Where the time actually goes
+
+| Stage | Cost |
+|---|---|
+| AXI4-Lite register access | ~100 ns each, 4 writes + 1 read per 32-bit chunk |
+| 32 TCK edges at 10 MHz | 3.2 µs per chunk |
+| CPU overhead per chunk | ~3 µs (polling + `/dev/mem`) |
+| **Net measured** | **5.6–9.0 Mbit/s** (56–90% of a 10 MHz line rate) |
+
+Measured end to end: a full **91,548,512-bit** Kintex-7 325T bitstream in
+**15.9 s** = **5.76 Mbit/s**, i.e. **58% of the 10 MHz line rate**.
+
+### Why not faster
+
+At 10 MHz TCK a 32-bit chunk needs 3.2 µs of wire time, and the software overhead
+is of the same order, so the two are balanced. Raising TCK raises the wire share
+but not the overhead — which is exactly why the FIFO streaming path exists:
+feeding a deep FIFO lets the engine run continuously and removes the per-chunk
+CPU cost. Completing that path is the main remaining performance item.
 
 ---
 
