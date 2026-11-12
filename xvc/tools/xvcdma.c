@@ -110,6 +110,9 @@ int main(int argc, char **argv)
     volatile uint32_t *map;
     uint32_t *tdo;
 
+    setvbuf(stdout, NULL, _IONBF, 0);   /* unbuffered: a hang must still show progress */
+    setvbuf(stderr, NULL, _IONBF, 0);
+
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-n") && i + 1 < argc) nbits = atoi(argv[++i]);
         else if (!strcmp(argv[i], "-d") && i + 1 < argc) div = atoi(argv[++i]);
@@ -147,13 +150,16 @@ int main(int argc, char **argv)
     printf("  src=0x%08X  dst=0x%08X\n",
            DMA_POOL, DMA_POOL + (DMA_POOL_SZ / 2));
 
-    /* ---- reset both channels ---- */
-    wr(dma, MM2S_DMACR, 4); wr(dma, S2MM_DMACR, 4);
-    usleep(2000);
+    /* ---- do NOT pulse Reset: the core is already reset by PL configuration,
+     * and on this design the DMACR Reset bit (bit1) never self-clears, which
+     * left both channels permanently in reset and silently refused to start.
+     * Clear it explicitly, then just run. */
     wr(dma, MM2S_DMACR, 0); wr(dma, S2MM_DMACR, 0);
-    usleep(2000);
-    printf("  after reset  MM2S_DMASR=0x%08X  S2MM_DMASR=0x%08X\n",
-           rd(dma, MM2S_DMASR), rd(dma, S2MM_DMASR));
+    usleep(1000);
+    printf("  cleared: MM2S_DMACR=0x%08X  S2MM_DMACR=0x%08X\n",
+           rd(dma, MM2S_DMACR), rd(dma, S2MM_DMACR));
+    if (rd(dma, MM2S_DMACR) & 2) printf("  WARNING: MM2S Reset bit will not clear\n");
+    if (rd(dma, S2MM_DMACR) & 2) printf("  WARNING: S2MM Reset bit will not clear\n");
 
     /* ---- TAP: reset, then BYPASS, so the DR is one bit per device ---- */
     printf("  step A: TAP reset\n");
@@ -178,14 +184,24 @@ int main(int argc, char **argv)
     /* ---- arm TLAST, then fire both DMA channels ---- */
     wr(jt, J_DMAW, (uint32_t)words);        /* last popped word carries TLAST */
 
+    printf("  step C: arm S2MM\n");
     wr(dma, S2MM_DMACR, 1);                 /* RS */
+    printf("    S2MM_DMACR reads 0x%08X\n", rd(dma, S2MM_DMACR));
+    if (rd(dma, S2MM_DMACR) & 2) printf("    !! S2MM still in Reset, it will not move data\n");
     wr(dma, S2MM_DA, DMA_POOL + (DMA_POOL_SZ / 2));
+    printf("    S2MM_DA     reads 0x%08X\n", rd(dma, S2MM_DA));
     wr(dma, S2MM_LENGTH, (uint32_t)bytes);  /* writing LENGTH starts S2MM */
+    printf("    S2MM_LENGTH reads 0x%08X  (write should start it)\n", rd(dma, S2MM_LENGTH));
 
+    printf("  step D: arm MM2S\n");
     wr(dma, MM2S_DMACR, 1);                 /* RS */
+    printf("    MM2S_DMACR reads 0x%08X\n", rd(dma, MM2S_DMACR));
     wr(dma, MM2S_SA, DMA_POOL);
+    printf("    MM2S_SA     reads 0x%08X\n", rd(dma, MM2S_SA));
     t0 = now_s();
     wr(dma, MM2S_LENGTH, (uint32_t)bytes);  /* writing LENGTH starts MM2S */
+    printf("    MM2S_LENGTH reads 0x%08X\n", rd(dma, MM2S_LENGTH));
+    printf("  step E: running\n");
 
     if (wait_idle(dma, MM2S_DMASR, 20000) < 0)
         fprintf(stderr, "  MM2S did not go idle\n");

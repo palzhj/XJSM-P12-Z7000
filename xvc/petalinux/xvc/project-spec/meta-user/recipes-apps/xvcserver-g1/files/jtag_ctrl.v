@@ -77,7 +77,12 @@ module jtag_ctrl #(
     wire       tx_empty = (tx_diff == 8'd0);
     wire       tx_full  = (tx_diff >= 8'd128);
     wire       rx_empty = (rx_diff == 8'd0);
-    wire       rx_full  = (rx_diff >= 8'd128);
+    /* Leave one slot of headroom: a chunk that is already running when the FIFO
+     * looks nearly full still pushes its TDO word on completion, so the guard
+     * must trigger one word early. Without this the observed occupancy reached
+     * 129 in a 128-entry FIFO, the engine stalled, TX filled behind it and the
+     * whole DMA pipeline deadlocked. */
+    wire       rx_full  = (rx_diff >= 8'd127);
     wire [7:0] tx_free8 = tx_full ? 8'd0 : (8'd128 - tx_diff);
     wire [7:0] rx_used8 = rx_diff;
     reg [31:0] dmaw_q;       /* 0x44: number of words to move in this DMA run */
@@ -85,6 +90,7 @@ module jtag_ctrl #(
     reg        stream_chunk;
     (* INIT = 32'h0 *) reg [31:0] stream_cnt;
     (* INIT = 32'h0 *) reg [31:0] stream_start_cnt;
+    (* INIT = 32'h0 *) reg [31:0] stream_drop;   /* words lost to a full RX FIFO */
     reg        ctrl_free;
     reg        fifo_clr;     /* TAP block requests FIFO flush (pulse) */
     reg [31:0] go_seq;
@@ -117,13 +123,15 @@ module jtag_ctrl #(
                 wdata <= s_axi_wdata; w_done <= 1'b1;
             end
 
-            if (aw_done && w_done) begin
-                /* DMA: an AXI-Stream word enters the TX FIFO exactly like an AXI TXD write */
-                if (axis_push) begin
-                    tx_mem[tx_wr] <= s_axis_tdi_tdata;
-                    tx_push       <= 1'b1;
-                end
+            /* DMA: an AXI-Stream word enters the TX FIFO exactly like an AXI TXD
+             * write - but it must be serviced on EVERY clock, not only when an
+             * AXI write completes, so it lives outside the aw_done/w_done branch. */
+            if (axis_push) begin
+                tx_mem[tx_wr] <= s_axis_tdi_tdata;
+                tx_push       <= 1'b1;
+            end
 
+            if (aw_done && w_done) begin
                 case (waddr[7:2])
                     4'd0: len_q <= wdata;
                     4'd1: tms_q <= wdata;
@@ -149,12 +157,12 @@ module jtag_ctrl #(
                     end
                     default: ;
                 endcase
-                /* every m_axis pop consumes one word of the DMA run */
-                if (axis_pop && dmaw_left != 32'd0)
-                    dmaw_left <= dmaw_left - 32'd1;
-
                 aw_done <= 1'b0; w_done <= 1'b0; s_axi_bvalid <= 1'b1;
             end
+
+            /* every m_axis pop consumes one word of the DMA run (every clock) */
+            if (axis_pop && dmaw_left != 32'd0)
+                dmaw_left <= dmaw_left - 32'd1;
         end
     end
 
@@ -185,6 +193,7 @@ module jtag_ctrl #(
                     4'd15: s_axi_rdata <= {28'd0, chsel_q};            /* 0x3C broadcast TDO source */
                     6'd16: s_axi_rdata <= {20'd0, bcmask_q};           /* 0x40 broadcast mask */
                     6'd17: s_axi_rdata <= dmaw_left;                   /* 0x44 words left */
+                    6'd18: s_axi_rdata <= stream_drop;                 /* 0x48 drop count */
                     4'd13: s_axi_rdata <= stream_start_cnt;            /* 0x34 start count */
                     4'd14: s_axi_rdata <= {go_seq[15:0], seen_seq[15:0]}; /* 0x38 sequence number */
                     4'd11: s_axi_rdata <= {16'd0, ph};                 /* 0x2C phase counter */
@@ -338,9 +347,19 @@ module jtag_ctrl #(
                             running <= 1'b0;
                             state   <= S_IDLE;
                             if (stream_chunk) begin
-                                rx_mem[rx_wr] <= tdo_q;
-                                rx_push       <= 1'b1;
-                                stream_cnt    <= stream_cnt + 32'd1;
+                                /* Never write past a full FIFO: overwriting an
+                                 * unread slot corrupts rx_diff (it reached 130 in
+                                 * a 128-entry FIFO), which then looks permanently
+                                 * full and deadlocks the whole pipeline. If the
+                                 * consumer is too slow the word is dropped and
+                                 * counted in stream_drop instead. */
+                                if (!rx_full) begin
+                                    rx_mem[rx_wr] <= tdo_q;
+                                    rx_push       <= 1'b1;
+                                    stream_cnt    <= stream_cnt + 32'd1;
+                                end else begin
+                                    stream_drop   <= stream_drop + 32'd1;
+                                end
                             end
                         end else begin
                             bits   <= bits - 6'd1;

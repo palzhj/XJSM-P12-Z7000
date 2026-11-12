@@ -158,14 +158,18 @@ set_property -dict [list \
     CONFIG.c_sg_include_stscntrl_strm {0} \
     CONFIG.c_include_mm2s {1} \
     CONFIG.c_include_s2mm {1} \
-    CONFIG.c_m_axi_mm2s_data_width {32} \
+    CONFIG.c_m_axi_mm2s_data_width {64} \
     CONFIG.c_m_axis_mm2s_tdata_width {32} \
-    CONFIG.c_m_axi_s2mm_data_width {32} \
+    CONFIG.c_m_axi_s2mm_data_width {64} \
     CONFIG.c_s_axis_s2mm_tdata_width {32} \
 ] [get_bd_cells dma]
 
 create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 dma_ic
-set_property -dict [list CONFIG.NUM_MI {1} CONFIG.NUM_SI {2}] [get_bd_cells dma_ic]
+set_property -dict [list \
+    CONFIG.NUM_MI {1} CONFIG.NUM_SI {2} \
+    CONFIG.S00_DATA_WIDTH {64} CONFIG.S01_DATA_WIDTH {64} \
+    CONFIG.M00_DATA_WIDTH {64} \
+] [get_bd_cells dma_ic]
 connect_bd_intf_net [get_bd_intf_pins dma/M_AXI_MM2S] [get_bd_intf_pins dma_ic/S00_AXI]
 connect_bd_intf_net [get_bd_intf_pins dma/M_AXI_S2MM] [get_bd_intf_pins dma_ic/S01_AXI]
 connect_bd_intf_net [get_bd_intf_pins dma_ic/M00_AXI] [get_bd_intf_pins ps7/S_AXI_HP0]
