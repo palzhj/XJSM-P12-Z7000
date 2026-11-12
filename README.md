@@ -303,6 +303,19 @@ DDR ──MM2S──► jtag0.s_axis_tdi ──► TX FIFO ──► shift engin
 Cost: LUT 17.02% → **21.74%**, FF 7.13% → **9.93%**; timing still met with zero
 failing endpoints.
 
+**Buffer**: the device tree adds `mem=1008M`, which leaves the top 16 MiB
+(`0x3F000000 .. 0x3FFFFFFF`) outside the kernel map. Nothing else can allocate
+there, so `mmap(/dev/mem)` on it gives user space a physically contiguous AXI DMA
+buffer that the DMA masters reach through `S_AXI_HP0`.
+
+**Driver**: `xvc/tools/xvcdma.c` — arms `0x44` with a word count (so the last TDO
+word carries `TLAST`), points `MM2S_SA` at the TDI buffer and `S2MM_DA` at the TDO
+buffer, then writes the two `LENGTH` registers and polls for idle.
+
+Verified on hardware so far: bitstream `78e0b634` built and programmed, and
+`0x40400000` / `0x40400030` / `0x43C00044` all respond. The end-to-end throughput
+run still needs the new image on an SD card.
+
 ---
 
 ## Known Limitations

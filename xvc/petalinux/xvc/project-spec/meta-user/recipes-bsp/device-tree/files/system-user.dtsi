@@ -4,9 +4,26 @@
 	 * - earlycon / console: serial output (PS UART1 = MIO48/49, 115200)
 	 * - clk_ignore_unused: keep unused clocks running so PL/UIO still work
 	 * - uio_pdrv_genirq.of_id: bind PL generic-uio nodes to the uio driver
+	 * - mem=1008M: the SoC has 1 GiB; leave the top 16 MiB (0x3F000000 ..
+	 *   0x3FFFFFFF) outside the kernel's map so user space can mmap it through
+	 *   /dev/mem as a physically contiguous AXI DMA buffer. Nothing else can
+	 *   allocate there, and the DMA masters reach it through S_AXI_HP0.
 	 */
 	chosen {
-		bootargs = "earlycon console=ttyPS0,115200 clk_ignore_unused uio_pdrv_genirq.of_id=generic-uio";
+		bootargs = "earlycon console=ttyPS0,115200 clk_ignore_unused uio_pdrv_genirq.of_id=generic-uio mem=1008M";
+	};
+
+	/* Documented, empty by design: the 16 MiB above are described only so the
+	 * address is not mistaken for a mistake. The kernel never owns it. */
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		dma_pool: dma_pool@3F000000 {
+			reg = <0x3F000000 0x01000000>;
+			no-map;
+		};
 	};
 };
 
