@@ -153,9 +153,15 @@ assign_bd_address -offset 0x43CD0000 -range 64K -target_address_space /ps7/Data 
 # S2MM : jtag0.m_axis_tdo -> DDR   (captured TDO words)
 # Both masters land on ps7/S_AXI_HP0 through a small 2-to-1 interconnect.
 create_bd_cell -type ip -vlnv xilinx.com:ip:axi_dma:7.1 dma
+# c_sg_length_width sets the LENGTH register width in Register Direct mode too,
+# not just for scatter-gather (AMD KB 51577). Left at its default of 14 the
+# register truncates mod 16384, so a 16384-byte transfer programs a length of
+# ZERO and the channel silently never starts; 23 bits is the most this IP
+# supports (2^23-1 bytes).
 set_property -dict [list \
     CONFIG.c_include_sg {0} \
     CONFIG.c_sg_include_stscntrl_strm {0} \
+    CONFIG.c_sg_length_width {23} \
     CONFIG.c_include_mm2s {1} \
     CONFIG.c_include_s2mm {1} \
     CONFIG.c_m_axi_mm2s_data_width {64} \

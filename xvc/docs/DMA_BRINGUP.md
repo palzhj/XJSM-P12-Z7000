@@ -208,7 +208,7 @@ and all 200 arrive in order.
 ## Where this leaves the DMA
 
 ```
-bitstream  xvc/out/dma_dbg/system_wrapper.bit   md5 ac0d32ea558fba221d2ca268b237c795
+bitstream  xvc/out/dma_dbg/system_wrapper.bit   md5 5a399d08c98bc5ac7327a476b42be617
 driver     xvc/out/dma_dbg/xvcdma              md5 7f09f20d15c5a7f692372828c87f4c96
 timing     WNS +0.490 ns  WHS +0.012 ns  THS 0.000 ns   0 critical warnings
 ```
@@ -233,22 +233,32 @@ MM2S_DMASR = 0x00001002  S2MM_DMASR = 0x00001002   bit1 idle, no error bits
 Repeatable (3 consecutive runs, 2048/2048 each, pop == words every time). The
 "which side stops first" question no longer has a stall to find: nothing stops.
 
-### New limit found: 16 KB per transfer
+### Fixed: the 16 KB transfer wall
 
-`MM2S_LENGTH` / `S2MM_LENGTH` are only **14 bits wide** in this build, so:
+`MM2S_LENGTH` / `S2MM_LENGTH` were 14 bits wide, so the length truncated mod
+16384: a 16384-byte transfer programmed a length of **0** and the channel never
+started. AMD KB 51577: *"Despite the name, the C_SG_LENGTH_WIDTH parameter
+defines the width of the LENGTH registers for both Scatter Gather AND Register
+Direct modes."*
+
+[`../vivado/build_jtag12p.tcl`](../vivado/build_jtag12p.tcl) now sets
+`CONFIG.c_sg_length_width {23}` - the most this IP supports (2^23-1 bytes).
+Measured after the rebuild:
 
 | bytes | LENGTH reads back | result |
 |---|---|---|
-| 8192 | 0x00002000 | 2048/2048 words, 9.19 Mbit/s |
-| 16256 | 0x00003F80 | 4064/4064 words, 9.19 Mbit/s |
-| 16384 | 0x00000000 | nothing moves |
-| 131072 | 0x00000000 | nothing moves |
+| 16384 | 0x00004000 | 4096/4096 words, 9.27 Mbit/s |
+| 2 MiB | 0x00200000 | 524288/524288 words, 9.97 Mbit/s |
+| 8388604 | 0x007FFFFC | 2097151/2097151 words, 9.97 Mbit/s, 6.73 s |
+| 8388608 | 0x00000000 | still truncates - one byte over the 23-bit field |
 
-The value is truncated modulo 16384, so 16384 and 131072 both program a length
-of **0** and the channel never starts. Either set
-`CONFIG.c_sg_length_width {23}` on the `axi_dma` in
-[`../vivado/build_jtag12p.tcl`](../vivado/build_jtag12p.tcl), or have the driver
-re-arm per chunk of <= 16383 bytes. A full bitstream (91 Mbit) needs one of the
-two.
+`pop == words` on every one of those runs, no drops, both channels idle.
+9.97 Mbit/s against a 10.00 Mbit/s wire means the shift engine is the limit
+again, not the DMA.
 
-Remaining: pick the 16 KB fix, then wire the DMA path into `xvcserver_g1`.
+A whole bitstream is 91,548,512 bits = 11,443,564 bytes, so it needs two
+transfers: the register caps at 8,388,607 and the 16 MiB reserved pool is split
+8 MiB per direction anyway. At 9.97 Mbit/s that is about 9.2 s, against 15.9 s
+through the CPU path.
+
+Remaining: chunk the run in two, then wire the DMA path into `xvcserver_g1`.
