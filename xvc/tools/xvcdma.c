@@ -51,6 +51,9 @@
 #define JTAG0_BASE  0x43C00000u
 #define DMA_POOL    0x3F000000u
 #define DMA_POOL_SZ 0x01000000u
+/* MM2S_LENGTH / S2MM_LENGTH are 23 bits in this build, so one transfer can be
+ * at most 2^23-1 bytes, and it must stay a whole number of 32-bit words. */
+#define MAX_XFER    0x007FFFFCu
 
 /* AXI DMA register offsets (simple mode) */
 #define MM2S_DMACR   0x00
@@ -110,14 +113,14 @@ struct hs_trace {
     int      samples;
 };
 
-/* Returns 0 when both DMA channels reached idle, -1 on timeout. */
+/* Returns 0 once every armed word has been popped, -1 on timeout. */
 static int trace_run(int timeout_ms, uint32_t words, uint32_t pop0)
 {
     struct hs_trace h;
     uint32_t moved;
     double t0 = now_s(), next_print = 0.0;
     uint32_t pv, pt, pp;
-    int i, mm2s_done = 0, s2mm_done = 0, rc = -1;
+    int i, rc = -1;
 
     memset(&h, 0, sizeof(h));
     pv = rd(jt, J_TVALID);
@@ -129,8 +132,6 @@ static int trace_run(int timeout_ms, uint32_t words, uint32_t pop0)
         uint32_t v = rd(jt, J_TVALID);
         uint32_t t = rd(jt, J_TREADY);
         uint32_t p = rd(jt, J_POP);
-        uint32_t msr = rd(dma, MM2S_DMASR);
-        uint32_t ssr = rd(dma, S2MM_DMASR);
 
         h.d_tvalid = v - pv;
         h.d_tready = t - pt;
@@ -150,9 +151,15 @@ static int trace_run(int timeout_ms, uint32_t words, uint32_t pop0)
                    rd(jt, J_DMAW), rd(jt, J_DROP), rd(jt, J_STATUS));
         }
 
-        if (msr & 2) mm2s_done = 1;          /* bit1 = idle */
-        if (ssr & 2) s2mm_done = 1;
-        if (mm2s_done && s2mm_done) { rc = 0; break; }
+        if (rd(jt, J_DMAW) == 0) {
+            int k;                            /* let S2MM retire the TLAST */
+            for (k = 0; k < 1000; k++) {
+                if (rd(dma, S2MM_DMASR) & 2) break;
+                usleep(1000);
+            }
+            rc = 0;
+            break;
+        }
         usleep(1000);
     }
 
@@ -197,6 +204,8 @@ static int trace_run(int timeout_ms, uint32_t words, uint32_t pop0)
 int main(int argc, char **argv)
 {
     int nbits = 65536, div = 5, i, fd, words, bytes;
+    long chunk_req = MAX_XFER;
+    unsigned dst_off;
     double t0, dt;
     volatile uint32_t *map;
     uint32_t *tdo, pop0;
@@ -207,11 +216,23 @@ int main(int argc, char **argv)
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-n") && i + 1 < argc) nbits = atoi(argv[++i]);
         else if (!strcmp(argv[i], "-d") && i + 1 < argc) div = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "-c") && i + 1 < argc) chunk_req = atol(argv[++i]);
     }
     if (nbits % 32) { fprintf(stderr, "nbits must be a multiple of 32\n"); return 1; }
     words = nbits / 32;
     bytes = words * 4;
-    if (bytes > (int)DMA_POOL_SZ / 2) { fprintf(stderr, "too many bits\n"); return 1; }
+    if (chunk_req <= 0 || chunk_req > MAX_XFER) chunk_req = MAX_XFER;
+    chunk_req &= ~3L;                       /* whole words only */
+    if (chunk_req < 4) chunk_req = 4;
+    /* TDO staging only has to hold ONE chunk, so put it at the top of the pool
+     * and let the source use everything below: a full bitstream is 11.4 MiB,
+     * which does not fit in a fixed half of the 16 MiB reservation. */
+    dst_off = (unsigned)(DMA_POOL_SZ - (uint32_t)chunk_req);
+    if (bytes > (int)dst_off) {
+        fprintf(stderr, "too many bits for the pool: %d bytes, %u available"
+                        " (lower -c to give the source more room)\n", bytes, dst_off);
+        return 1;
+    }
 
     fd = open("/dev/mem", O_RDWR | O_SYNC);
     if (fd < 0) die("open /dev/mem");
@@ -234,12 +255,12 @@ int main(int argc, char **argv)
     /* ---- buffers in the reserved pool ---- */
     {
         uint32_t *src = (uint32_t *)pool;             /* TDI words */
-        tdo = (uint32_t *)(pool + (DMA_POOL_SZ / 2)); /* TDO words */
+        tdo = (uint32_t *)(pool + dst_off);           /* TDO staging, one chunk */
         for (i = 0; i < words; i++) src[i] = 0xAAAAAAAAu;   /* any pattern */
-        memset((void *)tdo, 0, bytes);
+        memset((void *)tdo, 0, chunk_req);
     }
-    printf("  src=0x%08X  dst=0x%08X\n",
-           DMA_POOL, DMA_POOL + (DMA_POOL_SZ / 2));
+    printf("  src=0x%08X  tdo=0x%08X  src room=%u bytes\n",
+           DMA_POOL, DMA_POOL + dst_off, dst_off);
 
     /* ---- do NOT pulse Reset: the core is already reset by PL configuration,
      * and on this design the DMACR Reset bit (bit1) never self-clears, which
@@ -277,31 +298,50 @@ int main(int argc, char **argv)
     wr(jt, J_CTRL, 0x4);                    /* ctrl bit2 = FIFO clear */
     wr(jt, J_CTRL, 0x0);
 
-    /* ---- arm TLAST, then fire both DMA channels ---- */
-    pop0 = rd(jt, J_POP);
-    wr(jt, J_DMAW, (uint32_t)words);        /* last popped word carries TLAST */
-
+    /* ---- fire the run, in transfers of at most MAX_XFER bytes ---- */
     printf("  step C: arm S2MM\n");
-    wr(dma, S2MM_DMACR, 1);                 /* RS */
+    wr(dma, S2MM_DMACR, 1);                 /* RS, stays set across chunks */
     printf("    S2MM_DMACR reads 0x%08X\n", rd(dma, S2MM_DMACR));
     if (rd(dma, S2MM_DMACR) & 2) printf("    !! S2MM still in Reset, it will not move data\n");
-    wr(dma, S2MM_DA, DMA_POOL + (DMA_POOL_SZ / 2));
-    printf("    S2MM_DA     reads 0x%08X\n", rd(dma, S2MM_DA));
-    wr(dma, S2MM_LENGTH, (uint32_t)bytes);  /* writing LENGTH starts S2MM */
-    printf("    S2MM_LENGTH reads 0x%08X  (write should start it)\n", rd(dma, S2MM_LENGTH));
-
     printf("  step D: arm MM2S\n");
-    wr(dma, MM2S_DMACR, 1);                 /* RS */
+    wr(dma, MM2S_DMACR, 1);
     printf("    MM2S_DMACR reads 0x%08X\n", rd(dma, MM2S_DMACR));
-    wr(dma, MM2S_SA, DMA_POOL);
-    printf("    MM2S_SA     reads 0x%08X\n", rd(dma, MM2S_SA));
-    t0 = now_s();
-    wr(dma, MM2S_LENGTH, (uint32_t)bytes);  /* writing LENGTH starts MM2S */
-    printf("    MM2S_LENGTH reads 0x%08X\n", rd(dma, MM2S_LENGTH));
-    printf("  step E: running\n");
 
-    if (trace_run(20000, (uint32_t)words, pop0) < 0)
-        fprintf(stderr, "  timed out: not both channels went idle\n");
+    /* TMS is forced to 0 and the TAP stays in Shift-DR across the seam, so it
+     * is safe to stop between chunks: TCK just idles. */
+    pop0 = rd(jt, J_POP);
+    {
+        uint32_t off = 0, total = (uint32_t)bytes, chunk = (uint32_t)chunk_req;
+        int nchunk = 0;
+
+        t0 = now_s();
+        while (off < total) {
+            uint32_t len = total - off;
+            uint32_t cw, pop_before, timeout_ms;
+
+            if (len > chunk) len = chunk;
+            cw = len / 4;
+            pop_before = rd(jt, J_POP);
+            timeout_ms = (int)(cw * 0.0032) * 3 + 5000;   /* 320 clk/word @100 MHz */
+
+            nchunk++;
+            printf("  chunk %d: src+%u  dst+%u  %u bytes  %u words\n",
+                   nchunk, off, off, len, cw);
+
+            wr(jt, J_DMAW, cw);                       /* TLAST on this chunk's last word */
+            wr(dma, S2MM_DA, DMA_POOL + dst_off);
+            wr(dma, S2MM_LENGTH, len);                /* starts S2MM */
+            wr(dma, MM2S_SA, DMA_POOL + off);
+            wr(dma, MM2S_LENGTH, len);                /* starts MM2S */
+
+            if (trace_run(timeout_ms, cw, pop_before) < 0) {
+                fprintf(stderr, "  chunk %d stalled\n", nchunk);
+                break;
+            }
+            off += len;
+        }
+        printf("  step E: done, %d chunk(s)\n", nchunk);
+    }
     dt = now_s() - t0;
 
     printf("  done in %.4f s  ->  %.2f Mbit/s\n", dt, nbits / dt / 1e6);
@@ -311,8 +351,9 @@ int main(int argc, char **argv)
     printf("  0x48 drop=%u  0x24 status=0x%08X (rx_used=0x%02X tx_free=0x%02X)\n",
            rd(jt, J_DROP), rd(jt, J_STATUS),
            (rd(jt, J_STATUS) >> 8) & 0xFF, rd(jt, J_STATUS) & 0xFF);
-    printf("  0x4C tvalid=%u  0x50 tready=%u  0x54 pop=%u\n",
-           rd(jt, J_TVALID), rd(jt, J_TREADY), rd(jt, J_POP));
+    printf("  0x4C tvalid=%u  0x50 tready=%u  0x54 pop=%u (this run: %u of %d words)\n",
+           rd(jt, J_TVALID), rd(jt, J_TREADY), rd(jt, J_POP),
+           rd(jt, J_POP) - pop0, words);
     printf("  TDO[0..7] = %08X %08X %08X %08X %08X %08X %08X %08X\n",
            tdo[0], tdo[1], tdo[2], tdo[3], tdo[4], tdo[5], tdo[6], tdo[7]);
     return 0;

@@ -262,3 +262,32 @@ transfers: the register caps at 8,388,607 and the 16 MiB reserved pool is split
 through the CPU path.
 
 Remaining: chunk the run in two, then wire the DMA path into `xvcserver_g1`.
+
+### Chunked runs at full bitstream size
+
+`xvcdma -c <bytes>` re-arms the channel every chunk (default 8388604, the 23-bit
+maximum), and the TDO staging area now sits at the top of the pool so the
+source can use everything below it. That matters: a real bitstream is 11.4 MiB,
+which does not fit in a fixed half of the 16 MiB reservation.
+
+| run | chunks | result |
+|---|---|---|
+| 8 MiB, 4 MiB chunks | 2 | 2,097,151/2,097,151 words, 9.97 Mbit/s |
+| 8 MiB, 1 MiB chunks | 8 | 8/8 chunks complete, 9.96 Mbit/s |
+| 91,548,512 bit, 1 MiB chunks | 11 | 2,860,891/2,860,891 words, 9.19 s, 9.96 Mbit/s |
+
+Stopping between chunks only idles TCK while the TAP stays in Shift-DR, so the
+seam costs nothing measurable - the 11-chunk run is the same speed as a single
+transfer. **9.19 s for a whole bitstream against 15.9 s through the CPU path.**
+
+Caveat: the TDO staging buffer is reused per chunk, so this proves the TDI path
+at full scale, not whole-run TDO retention. A real load has to keep the TDO of
+every chunk (another 11.4 MiB), so src + TDO = 22.8 MiB exceeds the 16 MiB
+reservation; the pool would have to grow to 32 MiB (`mem=992M`).
+
+### Regression
+
+`xvc/tests/fulltest_v12.py --net-only` against this bitstream: **61 passed, 0
+failed** (12 items need the serial port). The `jtag_ctrl` handshake rework did
+not disturb the 12 non-DMA channels - they still pass the full protocol,
+concurrency, broadcast and 524288-bit robustness groups.
