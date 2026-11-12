@@ -312,9 +312,11 @@ buffer that the DMA masters reach through `S_AXI_HP0`.
 word carries `TLAST`), points `MM2S_SA` at the TDI buffer and `S2MM_DA` at the TDO
 buffer, then writes the two `LENGTH` registers and polls for idle.
 
-Verified on hardware so far: bitstream `78e0b634` built and programmed, and
-`0x40400000` / `0x40400030` / `0x43C00044` all respond. The end-to-end throughput
-run still needs the new image on an SD card.
+Verified on hardware: bitstream `78e0b634` programmed, DMA registers respond, the
+device tree reserves the pool and a 65,536-bit run moved **1917 of 2048 words**
+through the DMA before a tail stall. The remaining synchronisation problem and
+the measurements are tracked in
+[`xvc/docs/DMA_BRINGUP.md`](xvc/docs/DMA_BRINGUP.md).
 
 ---
 

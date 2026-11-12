@@ -122,18 +122,12 @@ int main(int argc, char **argv)
     fd = open("/dev/mem", O_RDWR | O_SYNC);
     if (fd < 0) die("open /dev/mem");
 
-    /* one mapping covering DMA (0x40400000) and jtag0 (0x43C00000) */
-    map = mmap(NULL, 0x800000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0x40400000u);
-    if (map == MAP_FAILED) {
-        /* they are 8 MiB apart; map separately if a single window is refused */
-        dma = mmap(NULL, 0x10000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, DMA_BASE);
-        if (dma == MAP_FAILED) die("mmap dma");
-        jt  = mmap(NULL, 0x10000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, JTAG0_BASE);
-        if (jt == MAP_FAILED) die("mmap jtag0");
-    } else {
-        dma = map;                                    /* 0x40400000 */
-        jt  = (volatile uint32_t *)((uint8_t *)map - (DMA_BASE - JTAG0_BASE));
-    }
+    /* Map the two blocks separately - simpler and it always works. */
+    dma = mmap(NULL, 0x10000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, DMA_BASE);
+    if (dma == MAP_FAILED) die("mmap dma block 0x40400000");
+    jt  = mmap(NULL, 0x10000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, JTAG0_BASE);
+    if (jt == MAP_FAILED) die("mmap jtag0 block 0x43C00000");
+    printf("  mapped dma=%p jt=%p\n", (void *)dma, (void *)jt);
 
     pool = mmap(NULL, DMA_POOL_SZ, PROT_READ | PROT_WRITE, MAP_SHARED, fd, DMA_POOL);
     if (pool == MAP_FAILED) die("mmap dma pool (did the DT set mem=1008M?)");
@@ -162,6 +156,7 @@ int main(int argc, char **argv)
            rd(dma, MM2S_DMASR), rd(dma, S2MM_DMASR));
 
     /* ---- TAP: reset, then BYPASS, so the DR is one bit per device ---- */
+    printf("  step A: TAP reset\n");
     wr(jt, J_DIV, (uint32_t)div);
     wr(jt, J_DMAW, 0);                 /* disarm TLAST while doing the TAP setup */
     wr(jt, J_LEN, 6); wr(jt, J_TMS, 0x3F); wr(jt, J_TDI, 0x00); wr(jt, J_CTRL, 1);
