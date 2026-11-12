@@ -137,7 +137,7 @@ and remove the `/run/` entry from `PSEUDO_IGNORE_PATHS` in the project's `petali
 | 32 | `settck` computed DIV but **never wrote it to hardware** | `do_shift_one` does not write `0x14`, and the single-channel path wrote it only once at startup | ✅ fixed (v14) |
 | 33 | Client requesting 1 MHz forced to 10 MHz | `tck_div = g_min_div` overwrote unconditionally | ✅ fixed (`-d` is an upper bound only) |
 | 34 | Channels inside the mask still refused after the session ends | since v13 the mask is a **static reservation** (by design) | needs the UI to clear the mask to recover |
-| 35 | **FIFO streaming path corrupts long shifts** | `stream_zero` never wrote the LEN register, and the engine's autonomous path plus the server's manual pacing disagreed; measured 50% data match at 65,536 bits vs 100% on the chunked path | ⏸ streaming disabled, chunked path used (correct but slower) |
+| 35 | **FIFO streaming path corrupted long shifts** | the server paced the FIFO by hand without ever confirming the engine consumed it, so underruns produced 50% data match at 65,536 bits | ✅ fixed: rewrite `stream_zero` around `stream_cnt` (0x28) with batch push/drain and a completion check that falls back to the chunked path; 1 Mbit loopback now 100% bit-exact |
 
 ## 2. Unresolved / Pending
 
@@ -149,7 +149,7 @@ and remove the `/run/` entry from `PSEUDO_IGNORE_PATHS` in the project's `petali
 | D | `bcast_en` remains set when the broadcast process is SIGKILLed | channel ports temporarily all REFUSE | self-healing on accept ✓ or restart the server |
 | E | Connections made within 3 seconds before the server starts may be wrongly refused | very small window | just retry |
 | F | FIFO uses distributed RAM (2,350 LUT) | no practical impact | can switch to BRAM to optimize |
-| G | **FIFO streaming not enabled** (see #35) | throughput stays at 5.6–9.0 Mbit/s instead of approaching the 10 MHz line rate | fix `stream_zero` pacing, then re-enable and re-measure |
+| G | Streaming is correct but **no faster** than chunked mode | both paths still cost one `/dev/mem` register access per 32-bit word, ~5.7 Mbit/s ceiling | needs DMA or a wider register interface, not a deeper FIFO |
 | H | 79 lint warnings come from generated code | no practical impact | can create waivers |
 
 ## 3. Notes

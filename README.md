@@ -234,11 +234,23 @@ TX FIFO is non-empty it starts a 32-bit chunk by itself (`TMS` forced to 0, `TDI
 taken straight from the FIFO), then pushes the captured TDO into the RX FIFO —
 one hardware shift per queued word, with no software trigger at all.
 
-> **Current status**: the FIFO registers, pointers and autonomous-streaming
-> logic are all present and used for buffering, but the server's
-> zero-TMS streaming path is **disabled** (see
-> [`KNOWN_ISSUES.md`](xvc/docs/KNOWN_ISSUES.md)); every shift takes the 32-bit
-> chunked path described above. Measured throughput reflects that.
+> **Current status**: the streaming path is **enabled and verified** — a
+> 1 Mbit loopback through a Kintex UltraScale+ KU15P comes back **100% bit-exact**
+> (previously 50% at 65,536 bits, see [`KNOWN_ISSUES.md`](xvc/docs/KNOWN_ISSUES.md)
+> #35).
+>
+> It does **not** make things faster, though, and the measurement says why:
+>
+> | Shift length | FIFO streaming | 32-bit chunked |
+> |---|---|---|
+> | 65,536 bit | 5.19 Mbit/s | 5.97 Mbit/s |
+> | 262,144 bit | 5.82 Mbit/s | 5.82 Mbit/s |
+> | 1,048,576 bit | 5.68 Mbit/s | 5.86 Mbit/s |
+>
+> Both paths perform **one register write per 32 bits**, so the FIFO cannot help:
+> the limit is the `/dev/mem` access itself (~2–3 µs per register touch, three
+> touches per word), not the shift engine. Beating it needs DMA or a wider
+> register interface, not a deeper queue.
 
 ### Where the time actually goes
 
@@ -256,9 +268,16 @@ Measured end to end: a full **91,548,512-bit** Kintex-7 325T bitstream in
 
 At 10 MHz TCK a 32-bit chunk needs 3.2 µs of wire time, and the software overhead
 is of the same order, so the two are balanced. Raising TCK raises the wire share
-but not the overhead — which is exactly why the FIFO streaming path exists:
-feeding a deep FIFO lets the engine run continuously and removes the per-chunk
-CPU cost. Completing that path is the main remaining performance item.
+but not the overhead.
+
+The FIFO path was implemented to attack exactly this, and the measurement shows
+it does not: both paths still cost **one register access per 32-bit word**, and
+that access (~2–3 µs through `/dev/mem`) is the real ceiling. Enabling streaming
+made long shifts correct at high speed but no faster overall.
+
+The next step that would actually move the number is **DMA** (let the PL read the
+bitstream from DDR itself, so the CPU stops touching registers per word), or a
+wider register interface so one write feeds more than 32 bits.
 
 ---
 

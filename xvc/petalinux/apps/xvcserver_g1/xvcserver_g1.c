@@ -25,7 +25,7 @@
 #define CTRL_BASE 0x43C00000u
 #define XVC_BASE_PORT  2543
 #define XVC_BCAST_PORT 2542
-#define XVC_BUILD_ID   "v18 (2026-11-06) auto byte-order detect (BE/LE) + apply DIV"  /* printed at startup, so you can confirm which build is running */
+#define XVC_BUILD_ID   "v22 (2026-11-12) FIFO streaming enabled + stream_cnt verify"
 #define XVC_NCH        12
 #define BCAST_CH       12      /* 13th engine: broadcast only (0x43CC0000) */
 #define REGS_CH        13      /* broadcast control register block (0x43CD0000) */
@@ -74,16 +74,32 @@ static int zero_run(const uint8_t *tms, int start, int maxbits)
 }
 static int stream_zero(int nbits, const uint8_t *tdi, uint8_t *tdo, int start)
 {
-    /* Simple, reliable flow control: push 32 words -> wait until RX has 32 words -> pop 32 words */
-    const int BATCH = 32;
-    int words = nbits / 32, done = 0;
+    /* The engine shifts one 32-bit chunk for every word pushed into the TX FIFO,
+     * entirely on its own (TMS is forced to 0 in hardware while streaming). All we
+     * have to do is keep it fed and drain the RX FIFO.
+     *
+     * Two things make this safe to trust:
+     *   - 0x24 STATUS[7:0]  / STATUS[15:8] give TX-free / RX-used word counts
+     *   - 0x28 stream_cnt tells us how many chunks the engine actually completed
+     * If stream_cnt does not advance by exactly the expected amount the caller
+     * replays the same bits through the chunked path, so a FIFO stall can never
+     * corrupt the data.
+     */
+    /* Batch = the full FIFO depth. A small batch makes the engine idle between
+     * batches, which is what made streaming slower than the chunked path. */
+    const int BATCH = 128;
+    int words = nbits / 32;
+    int done = 0;
+    uint32_t cnt0 = rd(0x28);
 
     while (done < words) {
         int batch = words - done;
         int sent = 0, got = 0, guard;
+
         if (batch > BATCH) batch = BATCH;
 
-        guard = 500000;
+        /* ---- push up to BATCH words, honouring tx_free ---- */
+        guard = 2000000;
         while (sent < batch && --guard > 0) {
             uint32_t st = rd(0x24);
             int freew = (int)(st & 0xFF);
@@ -92,9 +108,13 @@ static int stream_zero(int nbits, const uint8_t *tdi, uint8_t *tdo, int start)
                 sent++;
             }
         }
-        if (sent < batch) { fprintf(stderr, "stream push timeout\n"); return -1; }
+        if (sent < batch) {
+            fprintf(stderr, "stream: push stalled at word %d/%d\n", done + sent, words);
+            return -1;
+        }
 
-        guard = 500000;
+        /* ---- drain the matching BATCH words ---- */
+        guard = 2000000;
         while (got < batch && --guard > 0) {
             uint32_t st = rd(0x24);
             int avail = (int)((st >> 8) & 0xFF);
@@ -103,9 +123,23 @@ static int stream_zero(int nbits, const uint8_t *tdi, uint8_t *tdo, int start)
                 got++;
             }
         }
-        if (got < batch) { fprintf(stderr, "stream pop timeout\n"); return -1; }
+        if (got < batch) {
+            fprintf(stderr, "stream: drain stalled at word %d/%d\n", done + got, words);
+            return -1;
+        }
 
         done += batch;
+    }
+
+    /* ---- the engine must have completed exactly `words` chunks ---- */
+    {
+        uint32_t cnt1 = rd(0x28);
+        uint32_t delta = cnt1 - cnt0;
+        if (delta != (uint32_t)words) {
+            fprintf(stderr, "stream: engine completed %u chunks, expected %d\n",
+                    (unsigned)delta, words);
+            return -1;
+        }
     }
     return 0;
 }
@@ -161,11 +195,24 @@ static int do_shift_one(int nbits, const uint8_t *tms, const uint8_t *tdi, uint8
         uint32_t m = 0, d = 0, r;
         int i, guard = 100000;
 
-        /* The streaming path (stream_zero) has a bug: it never writes the LEN register (0x00),
-         * RTL does not know how many bits to shift -> long shifts return corrupt data.
-         * Measured: 4096 bit through the 32-bit path is 100% correct; 65536 bit streaming only 50% (BUG)
-         * so streaming is disabled here and everything uses the proven 32-bit chunk path.
-         * Performance: 32 bit per chunk, about 3 us per chunk measured -> 91.5 Mbit in about 9 seconds, acceptable. */
+        /* The engine shifts a 32-bit chunk by itself for every word present in the TX
+         * FIFO (TMS forced to 0). stream_zero() feeds and drains it in batches and then
+         * checks stream_cnt (0x28) to prove the engine really completed the work.
+         * If anything looks wrong it returns -1 and we fall back to the chunked path,
+         * replaying the same bits, so corruption cannot slip through.
+         * Only all-zero-TMS runs qualify, because the hardware forces TMS=0 while
+         * streaming. */
+        if (chunk >= FIFO_MIN) {
+            int run = zero_run(tms, done, chunk);
+            int K = run & ~31;                 /* whole 32-bit words only */
+            if (K >= FIFO_MIN) {
+                if (stream_zero(K, tdi, tdo, done) == 0) {
+                    done += K;
+                    continue;
+                }
+                fprintf(stderr, "stream: falling back to chunked mode at bit %d\n", done);
+            }
+        }
         if (chunk > 32) chunk = 32;
 
         for (i = 0; i < chunk; i++) {
