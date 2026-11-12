@@ -281,6 +281,30 @@ wider register interface so one write feeds more than 32 bits.
 
 ---
 
+## DMA: CPU-Free Bulk Streaming
+
+`jtag_ctrl` exposes **AXI-Stream ports** next to its AXI4-Lite register file, so an
+`axi_dma` instance can move a bitstream between DDR and the shift engine without
+the CPU touching a register per word:
+
+```
+DDR ──MM2S──► jtag0.s_axis_tdi ──► TX FIFO ──► shift engine ──► RX FIFO ──► jtag0.m_axis_tdo ──S2MM──► DDR
+```
+
+- The stream writes land in the **same 128 × 32-bit FIFO** the `0x1C TXD` register
+  uses, so the engine's autonomous per-word shifting is unchanged.
+- `s_axis_tdi` needs no bookkeeping; **S2MM needs `TLAST`** to know where a transfer
+  ends, so register **`0x44`** loads a word count and the last word of the run
+  carries `TLAST`.
+- Only channel 0 is wired to the DMA. The other 12 engines have `dma_en` tied low,
+  so their behaviour is bit-identical to before.
+- DMA register block: **`0x40400000`**, two AXI masters into `ps7/S_AXI_HP0`.
+
+Cost: LUT 17.02% → **21.74%**, FF 7.13% → **9.93%**; timing still met with zero
+failing endpoints.
+
+---
+
 ## Known Limitations
 
 | Item | Notes |

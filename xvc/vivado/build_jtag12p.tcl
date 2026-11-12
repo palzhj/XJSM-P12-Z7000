@@ -46,7 +46,7 @@ connect_bd_net [get_bd_pins ps7/FCLK_RESET0_N] [get_bd_pins rst/ext_reset_in]
 
 # ---- AXI Interconnect: 14 slaves ----
 create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 axi
-set_property -dict [list CONFIG.NUM_MI {14} CONFIG.NUM_SI {1}] [get_bd_cells axi]
+set_property -dict [list CONFIG.NUM_MI {15} CONFIG.NUM_SI {1}] [get_bd_cells axi]
 connect_bd_intf_net [get_bd_intf_pins ps7/M_AXI_GP0] [get_bd_intf_pins axi/S00_AXI]
 connect_bd_net [get_bd_pins ps7/FCLK_CLK0] [get_bd_pins axi/ACLK]
 connect_bd_net [get_bd_pins ps7/FCLK_CLK0] [get_bd_pins axi/S00_ACLK]
@@ -147,6 +147,79 @@ assign_bd_address -offset 0x43CC0000 -range 64K -target_address_space /ps7/Data 
 set seg [get_bd_addr_segs bcregs/S_AXI/reg0]
 catch { set_property range 64K $seg }
 assign_bd_address -offset 0x43CD0000 -range 64K -target_address_space /ps7/Data $seg
+
+# ---- AXI DMA: CPU-free bulk streaming into/out of jtag0's FIFOs ----
+# MM2S : DDR -> jtag0.s_axis_tdi   (TDI words, TMS forced 0 by the engine)
+# S2MM : jtag0.m_axis_tdo -> DDR   (captured TDO words)
+# Both masters land on ps7/S_AXI_HP0 through a small 2-to-1 interconnect.
+create_bd_cell -type ip -vlnv xilinx.com:ip:axi_dma:7.1 dma
+set_property -dict [list \
+    CONFIG.c_include_sg {0} \
+    CONFIG.c_sg_include_stscntrl_strm {0} \
+    CONFIG.c_include_mm2s {1} \
+    CONFIG.c_include_s2mm {1} \
+    CONFIG.c_m_axi_mm2s_data_width {32} \
+    CONFIG.c_m_axis_mm2s_tdata_width {32} \
+    CONFIG.c_m_axi_s2mm_data_width {32} \
+    CONFIG.c_s_axis_s2mm_tdata_width {32} \
+] [get_bd_cells dma]
+
+create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 dma_ic
+set_property -dict [list CONFIG.NUM_MI {1} CONFIG.NUM_SI {2}] [get_bd_cells dma_ic]
+connect_bd_intf_net [get_bd_intf_pins dma/M_AXI_MM2S] [get_bd_intf_pins dma_ic/S00_AXI]
+connect_bd_intf_net [get_bd_intf_pins dma/M_AXI_S2MM] [get_bd_intf_pins dma_ic/S01_AXI]
+connect_bd_intf_net [get_bd_intf_pins dma_ic/M00_AXI] [get_bd_intf_pins ps7/S_AXI_HP0]
+
+# control port joins the existing Lite interconnect as M14 (NUM_MI 14 -> 15, set at creation)
+connect_bd_net [get_bd_pins axi/M14_ACLK]    [get_bd_pins ps7/FCLK_CLK0]
+connect_bd_net [get_bd_pins axi/M14_ARESETN] [get_bd_pins rst/peripheral_aresetn]
+
+connect_bd_intf_net [get_bd_intf_pins dma/S_AXI_LITE] [get_bd_intf_pins axi/M14_AXI]
+
+# clocks / reset
+connect_bd_net [get_bd_pins dma/s_axi_lite_aclk]    [get_bd_pins ps7/FCLK_CLK0]
+connect_bd_net [get_bd_pins dma/m_axi_mm2s_aclk]    [get_bd_pins ps7/FCLK_CLK0]
+connect_bd_net [get_bd_pins dma/m_axi_s2mm_aclk]    [get_bd_pins ps7/FCLK_CLK0]
+connect_bd_net [get_bd_pins dma/axi_resetn]         [get_bd_pins rst/peripheral_aresetn]
+connect_bd_net [get_bd_pins dma_ic/ACLK]            [get_bd_pins ps7/FCLK_CLK0]
+connect_bd_net [get_bd_pins dma_ic/S00_ACLK]        [get_bd_pins ps7/FCLK_CLK0]
+connect_bd_net [get_bd_pins dma_ic/S01_ACLK]        [get_bd_pins ps7/FCLK_CLK0]
+connect_bd_net [get_bd_pins dma_ic/M00_ACLK]        [get_bd_pins ps7/FCLK_CLK0]
+connect_bd_net [get_bd_pins dma_ic/ARESETN]         [get_bd_pins rst/peripheral_aresetn]
+connect_bd_net [get_bd_pins dma_ic/S00_ARESETN]     [get_bd_pins rst/peripheral_aresetn]
+connect_bd_net [get_bd_pins dma_ic/S01_ARESETN]     [get_bd_pins rst/peripheral_aresetn]
+connect_bd_net [get_bd_pins dma_ic/M00_ARESETN]     [get_bd_pins rst/peripheral_aresetn]
+# ps7/S_AXI_HP0_ACLK is auto-connected by Vivado
+
+# stream wiring: only channel 0 gets the DMA; the other 12 engines tie off
+connect_bd_intf_net [get_bd_intf_pins dma/M_AXIS_MM2S] [get_bd_intf_pins jtag0/s_axis_tdi]
+connect_bd_intf_net [get_bd_intf_pins jtag0/m_axis_tdo] [get_bd_intf_pins dma/S_AXIS_S2MM]
+# the interface carries m_axis_tdo_tlast, which S2MM needs to terminate a transfer
+
+
+create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 dma_on
+set_property -dict [list CONFIG.CONST_WIDTH {1} CONFIG.CONST_VAL {1}] [get_bd_cells dma_on]
+create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 dma_off
+set_property -dict [list CONFIG.CONST_WIDTH {1} CONFIG.CONST_VAL {0}] [get_bd_cells dma_off]
+
+connect_bd_net [get_bd_pins dma_on/dout]  [get_bd_pins jtag0/dma_en]
+for {set i 1} {$i < 12} {incr i} {
+    connect_bd_net [get_bd_pins dma_off/dout] [get_bd_pins jtag$i/dma_en]
+    connect_bd_net [get_bd_pins dma_off/dout] [get_bd_pins jtag$i/s_axis_tdi_tvalid]
+    connect_bd_net [get_bd_pins dma_off/dout] [get_bd_pins jtag$i/m_axis_tdo_tready]
+}
+connect_bd_net [get_bd_pins dma_off/dout] [get_bd_pins bceng/dma_en]
+connect_bd_net [get_bd_pins dma_off/dout] [get_bd_pins bceng/s_axis_tdi_tvalid]
+connect_bd_net [get_bd_pins dma_off/dout] [get_bd_pins bceng/m_axis_tdo_tready]
+
+# let both DMA masters reach DDR through HP0
+assign_bd_address -target_address_space /dma/Data_MM2S [get_bd_addr_segs ps7/S_AXI_HP0/HP0_DDR_LOWOCM]
+assign_bd_address -target_address_space /dma/Data_S2MM [get_bd_addr_segs ps7/S_AXI_HP0/HP0_DDR_LOWOCM]
+
+# DMA register block: 0x40400000
+set seg [get_bd_addr_segs dma/S_AXI_LITE/Reg]
+catch { set_property range 64K $seg }
+assign_bd_address -offset 0x40400000 -range 64K -target_address_space /ps7/Data $seg
 
 # ---- OLED I2C: PS7 EMIO -> IOBUF -> J20 pin35/pin33 (V15/U20) ----
 create_bd_cell -type module -reference i2c_emio i2c_emio_0
