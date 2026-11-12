@@ -99,3 +99,6 @@ xvc/out/v16/sd_card/image.ub
 # ===== Release binaries (distributed via GitHub Releases, not git history) =====
 release/v16/
 release/*.tar.gz
+
+# build-time credentials, never committed
+xvc/petalinux/xvc/project-spec/meta-user/conf/secret.conf

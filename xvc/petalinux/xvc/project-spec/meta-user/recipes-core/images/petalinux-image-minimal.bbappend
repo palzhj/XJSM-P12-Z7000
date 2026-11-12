@@ -1,22 +1,29 @@
 # Console access for bring-up:
-#  - root gets a password that YOU set below (no credential ships in this repo)
+#  - root gets a password supplied at BUILD time (no credential ships in this repo)
 #  - an unprivileged 'xvc' user exists (securetty only restricts root)
 #  - root login is allowed on the Zynq PS UART (ttyPS0)
 #
-# ⚠️ BEFORE BUILDING: set your own passwords.
-#    1) Generate a SHA-512 hash for each account:
-#         openssl passwd -6 '<your-root-password>'
-#         openssl passwd -6 '<your-xvc-password>'
-#    2) Paste each hash into EXTRA_USERS_PARAMS below.
-#    3) Escape every '$' as '\$' — bitbake expands $VAR, which would otherwise
-#       mangle the hash and silently produce an unusable password.
+# The password hashes are INJECTED, never committed:
 #
-# The placeholders below are deliberately invalid hashes: the image still builds
-# and boots, but neither account can log in until you set real ones. That is the
-# safe default — it is better to ship an image nobody can log into than one with
-# a published password.
+#     ./xvc/petalinux/inject_user_passwords.sh [root-pw] [xvc-pw]
+#     petalinux-build
+#
+# That script writes meta-user/conf/secret.conf (gitignored) holding SHA-512
+# hashes; the optional include below picks it up. Note the '$' escaping: bitbake
+# expands $... in values, so a crypt hash written literally would be mangled
+# into an unusable password. The script escapes them for you.
+#
+# If secret.conf is absent the placeholders are used. They are deliberately
+# invalid: the image still builds and boots, but nobody can log in. That is the
+# safe default - better an image nobody can log into than one with a published
+# password.
+include ${THISDIR}/../../conf/secret.conf
+
+XJSM_ROOT_PW_HASH ??= '\$6\$REPLACE_ME_SALT\$REPLACE_ME_HASH'
+XJSM_XVC_PW_HASH  ??= '\$6\$REPLACE_ME_SALT\$REPLACE_ME_HASH'
+
 inherit extrausers
-EXTRA_USERS_PARAMS = "usermod -p '\$6\$REPLACE_ME_SALT\$REPLACE_ME_HASH' root; useradd -m -s /bin/sh -p '\$6\$REPLACE_ME_SALT\$REPLACE_ME_HASH' xvc;"
+EXTRA_USERS_PARAMS = "usermod -p '${XJSM_ROOT_PW_HASH}' root; useradd -m -s /bin/sh -p '${XJSM_XVC_PW_HASH}' xvc;"
 
 ROOTFS_POSTPROCESS_COMMAND:append = " fix_securetty;"
 fix_securetty() {
