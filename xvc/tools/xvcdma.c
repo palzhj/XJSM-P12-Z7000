@@ -111,9 +111,10 @@ struct hs_trace {
 };
 
 /* Returns 0 when both DMA channels reached idle, -1 on timeout. */
-static int trace_run(int timeout_ms)
+static int trace_run(int timeout_ms, uint32_t words, uint32_t pop0)
 {
     struct hs_trace h;
+    uint32_t moved;
     double t0 = now_s(), next_print = 0.0;
     uint32_t pv, pt, pp;
     int i, mm2s_done = 0, s2mm_done = 0, rc = -1;
@@ -160,6 +161,24 @@ static int trace_run(int timeout_ms)
     printf("  last advance:  tvalid %.3f s   tready %.3f s   pop %.3f s  (from DMA start)\n",
            h.t_tvalid, h.t_tready, h.t_pop);
 
+    /* Complete means the armed run was fully consumed (0x44 back to 0) with no
+     * word thrown away. The pop counter is cumulative from PL configuration, so
+     * only its delta over this run is meaningful. */
+    moved = h.pop - pop0;
+    if ((rd(jt, J_DMAW) == 0) && (rd(jt, J_DROP) == 0)) {
+        printf("  RESULT: COMPLETE - %u words armed, %u popped this run, 0x44 back to 0, 0 dropped\n",
+               words, moved);
+        if (moved == words)
+            printf("           pop == words exactly: one pop per word, no lost or phantom transfers\n");
+        else
+            printf("           (%u extra pops are TDO words left in the RX FIFO by the TAP setup)\n",
+                   moved > words ? moved - words : 0);
+        return rc;
+    }
+
+    printf("  RESULT: INCOMPLETE - %u words armed, %u popped this run, %u still armed, %u dropped\n",
+           words, moved, rd(jt, J_DMAW), rd(jt, J_DROP));
+
     if (h.t_tvalid + 0.005 < h.t_tready)
         printf("  VERDICT: tvalid stopped first, %.3f s before tready\n"
                "           -> the SHIFT ENGINE stopped producing words (RX FIFO starved)\n",
@@ -180,7 +199,7 @@ int main(int argc, char **argv)
     int nbits = 65536, div = 5, i, fd, words, bytes;
     double t0, dt;
     volatile uint32_t *map;
-    uint32_t *tdo;
+    uint32_t *tdo, pop0;
 
     setvbuf(stdout, NULL, _IONBF, 0);   /* unbuffered: a hang must still show progress */
     setvbuf(stderr, NULL, _IONBF, 0);
@@ -253,7 +272,13 @@ int main(int argc, char **argv)
     }
     printf("  TAP prepared, DIV=%d (TCK %.2f MHz)\n", div, 100.0 / (2.0 * div));
 
+    /* Flush the TDO words the TAP setup left in the RX FIFO, so the pop delta
+     * for this run is exactly the number of words the DMA moved. */
+    wr(jt, J_CTRL, 0x4);                    /* ctrl bit2 = FIFO clear */
+    wr(jt, J_CTRL, 0x0);
+
     /* ---- arm TLAST, then fire both DMA channels ---- */
+    pop0 = rd(jt, J_POP);
     wr(jt, J_DMAW, (uint32_t)words);        /* last popped word carries TLAST */
 
     printf("  step C: arm S2MM\n");
@@ -275,7 +300,7 @@ int main(int argc, char **argv)
     printf("    MM2S_LENGTH reads 0x%08X\n", rd(dma, MM2S_LENGTH));
     printf("  step E: running\n");
 
-    if (trace_run(20000) < 0)
+    if (trace_run(20000, (uint32_t)words, pop0) < 0)
         fprintf(stderr, "  timed out: not both channels went idle\n");
     dt = now_s() - t0;
 

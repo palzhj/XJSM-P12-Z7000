@@ -216,6 +216,39 @@ timing     WNS +0.490 ns  WHS +0.012 ns  THS 0.000 ns   0 critical warnings
 Build and run steps, and how to read the verdict, are in
 [`../out/dma_dbg/README.md`](../out/dma_dbg/README.md).
 
-Still to do on hardware: program the bitstream, run `./xvcdma -n 65536 -d 5`,
-and confirm `pop == 2048`, `0x44 == 0`, `0x48 == 0`, both channels idle. If the
-trace still shows a stall, the counters now name the side.
+## Measured on hardware (2026-11-12, after the fix)
+
+Bitstream loaded via the FPGA manager (`echo swap.bin >
+/sys/class/fpga_manager/fpga0/firmware`; the driver wants a **byte-swapped**
+`.bin`, not Vivado's `.bit` - it says so in `dmesg`). 64 Kbit run, DIV=5:
+
+```
+0x4C tvalid = 2048      0x54 pop = 2048      <- one pop per word, exactly
+0x44 words left = 0     all armed words consumed, TLAST delivered
+0x48 drop = 0           0x24 status = 0x00000080 (rx_used=0, tx_free=128)
+MM2S_DMASR = 0x00001002  S2MM_DMASR = 0x00001002   bit1 idle, no error bits
+0.0077 s -> 8.55 Mbit/s
+```
+
+Repeatable (3 consecutive runs, 2048/2048 each, pop == words every time). The
+"which side stops first" question no longer has a stall to find: nothing stops.
+
+### New limit found: 16 KB per transfer
+
+`MM2S_LENGTH` / `S2MM_LENGTH` are only **14 bits wide** in this build, so:
+
+| bytes | LENGTH reads back | result |
+|---|---|---|
+| 8192 | 0x00002000 | 2048/2048 words, 9.19 Mbit/s |
+| 16256 | 0x00003F80 | 4064/4064 words, 9.19 Mbit/s |
+| 16384 | 0x00000000 | nothing moves |
+| 131072 | 0x00000000 | nothing moves |
+
+The value is truncated modulo 16384, so 16384 and 131072 both program a length
+of **0** and the channel never starts. Either set
+`CONFIG.c_sg_length_width {23}` on the `axi_dma` in
+[`../vivado/build_jtag12p.tcl`](../vivado/build_jtag12p.tcl), or have the driver
+re-arm per chunk of <= 16383 bytes. A full bitstream (91 Mbit) needs one of the
+two.
+
+Remaining: pick the 16 KB fix, then wire the DMA path into `xvcserver_g1`.
