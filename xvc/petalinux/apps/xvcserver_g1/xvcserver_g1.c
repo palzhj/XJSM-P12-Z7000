@@ -25,7 +25,7 @@
 #define CTRL_BASE 0x43C00000u
 #define XVC_BASE_PORT  2543
 #define XVC_BCAST_PORT 2542
-#define XVC_BUILD_ID   "v22 (2026-11-12) FIFO streaming enabled + stream_cnt verify"
+#define XVC_BUILD_ID   "v23 (2026-11-12) FIFO kept full, no inter-batch stall"
 #define XVC_NCH        12
 #define BCAST_CH       12      /* 13th engine: broadcast only (0x43CC0000) */
 #define REGS_CH        13      /* broadcast control register block (0x43CD0000) */
@@ -74,64 +74,54 @@ static int zero_run(const uint8_t *tms, int start, int maxbits)
 }
 static int stream_zero(int nbits, const uint8_t *tdi, uint8_t *tdo, int start)
 {
-    /* The engine shifts one 32-bit chunk for every word pushed into the TX FIFO,
-     * entirely on its own (TMS is forced to 0 in hardware while streaming). All we
-     * have to do is keep it fed and drain the RX FIFO.
+    /* Keep the TX FIFO full and the RX FIFO empty, and the shift engine never stops.
      *
-     * Two things make this safe to trust:
-     *   - 0x24 STATUS[7:0]  / STATUS[15:8] give TX-free / RX-used word counts
-     *   - 0x28 stream_cnt tells us how many chunks the engine actually completed
-     * If stream_cnt does not advance by exactly the expected amount the caller
-     * replays the same bits through the chunked path, so a FIFO stall can never
-     * corrupt the data.
+     * The earlier version pushed a fixed batch and then drained the same batch.
+     * Draining empties the TX FIFO before the next refill, so the engine idles
+     * between batches - which is why streaming measured no faster than the chunked
+     * path despite doing far less CPU work per word.
+     *
+     * Here the two sides are unbalanced on purpose: the engine consumes one word
+     * per 32 TCK cycles (3.2 us at 10 MHz) while the CPU can push or pop a word in
+     * ~200 ns, so we simply refill whenever there is room and drain whatever the
+     * engine has produced. The FIFO stays near full and the engine runs back to back.
+     *
+     * 0x28 stream_cnt is checked at the end; on any mismatch we return -1 and the
+     * caller replays the same bits through the verified chunked path.
      */
-    /* Batch = the full FIFO depth. A small batch makes the engine idle between
-     * batches, which is what made streaming slower than the chunked path. */
-    const int BATCH = 128;
     int words = nbits / 32;
-    int done = 0;
+    int pushed = 0, popped = 0;
     uint32_t cnt0 = rd(0x28);
+    int idle = 0;
 
-    while (done < words) {
-        int batch = words - done;
-        int sent = 0, got = 0, guard;
+    while (popped < words) {
+        uint32_t st = rd(0x24);
+        int freew = (int)(st & 0xFF);
+        int avail = (int)((st >> 8) & 0xFF);
+        int did = 0;
 
-        if (batch > BATCH) batch = BATCH;
+        while (freew-- > 0 && pushed < words) {
+            wr(0x1C, get_word(tdi, start + pushed * 32));
+            pushed++;
+            did = 1;
+        }
+        while (avail-- > 0 && popped < words) {
+            put_word(tdo, start + popped * 32, rd(0x20));
+            popped++;
+            did = 1;
+        }
 
-        /* ---- push up to BATCH words, honouring tx_free ---- */
-        guard = 2000000;
-        while (sent < batch && --guard > 0) {
-            uint32_t st = rd(0x24);
-            int freew = (int)(st & 0xFF);
-            while (freew-- > 0 && sent < batch) {
-                wr(0x1C, get_word(tdi, start + (done + sent) * 32));
-                sent++;
+        /* Bound the wait: 128 words in flight plus the engine rate, generously. */
+        if (!did) {
+            if (++idle > 2000000) {
+                fprintf(stderr, "stream: stalled with %d/%d words done\n", popped, words);
+                return -1;
             }
+        } else {
+            idle = 0;
         }
-        if (sent < batch) {
-            fprintf(stderr, "stream: push stalled at word %d/%d\n", done + sent, words);
-            return -1;
-        }
-
-        /* ---- drain the matching BATCH words ---- */
-        guard = 2000000;
-        while (got < batch && --guard > 0) {
-            uint32_t st = rd(0x24);
-            int avail = (int)((st >> 8) & 0xFF);
-            while (avail-- > 0 && got < batch) {
-                put_word(tdo, start + (done + got) * 32, rd(0x20));
-                got++;
-            }
-        }
-        if (got < batch) {
-            fprintf(stderr, "stream: drain stalled at word %d/%d\n", done + got, words);
-            return -1;
-        }
-
-        done += batch;
     }
 
-    /* ---- the engine must have completed exactly `words` chunks ---- */
     {
         uint32_t cnt1 = rd(0x28);
         uint32_t delta = cnt1 - cnt0;
