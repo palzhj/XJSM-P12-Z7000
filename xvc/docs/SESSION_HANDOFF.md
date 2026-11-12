@@ -89,6 +89,11 @@ Register map of the new pieces:
 
 ## 4. The exact current blocker
 
+> Superseded on 2026-11-12: the blocker was an RTL handshake bug, now fixed and
+> verified in simulation. The measurements below are kept as the history that
+> led to it. See the "Done — 2026-11-12, second pass" note at the end of this
+> section.
+
 Last run: 65,536 bits (2048 TDI words), bitstream `1821c13d`.
 
 ```
@@ -130,6 +135,25 @@ Then one build answers it outright:
 - `tvalid` climbing, `tready` flat → the problem is on the S2MM side
 - `tready` climbing, `tvalid` flat → the problem is in the engine
 - both climbing, `pop` flat → **handshake logic bug**, most likely
+
+#### Done — 2026-11-12, second pass
+
+The counters are in (`0x4C` `TVALID_CYC`, `0x50` `TREADY_CYC`, `0x54` `POP_CYC`,
+free-running, read deltas), and the answer turned out to be the third bullet, in
+simulation: `pop` ran away while the engine starved. Root cause is **Bug A** in
+[`DMA_BRINGUP.md`](DMA_BRINGUP.md#root-cause-2026-11-12-second-pass) — the AXIS
+handshake went through registered pulses, so the FIFO pointers lagged the
+transfer, one TDO word was popped twice, and `rx_rd` walked past `rx_wr` into a
+bogus modulo-256 "255 words queued" state. **Bug B** was found at the same time:
+the 128-deep FIFOs were addressed with an 8-bit pointer. Both fixed; the read
+decode had to widen to `addr[7:2]` for the new offsets.
+
+Simulation now shows `pop == words` (a 200-word burst arrives intact and in
+order). The bitstream is rebuilt; what is left is only the on-board
+re-measurement — see [`../out/dma_dbg/README.md`](../out/dma_dbg/README.md).
+
+Note the earlier claim that 131 words "went missing" was a misreading: `0x44`
+counts pops, and pops were not one-per-word.
 
 ---
 

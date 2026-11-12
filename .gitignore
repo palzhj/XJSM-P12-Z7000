@@ -5,6 +5,8 @@ xvc/petalinux/xvc/components/
 xvc/vivado/work*/
 xvc/vivado/out*/
 xvc/vivado/.Xil/
+xvc/vivado/.vivado-ai/
+xvc/vivado/NA/
 xvc/sim/__pycache__/
 xvc/sim/sim_build/
 **/__pycache__/

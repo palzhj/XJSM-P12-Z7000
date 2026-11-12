@@ -1,0 +1,9 @@
+# Minimal sshd configuration for the XJSM-P12-Z7000 board.
+# Written because the stock image ships no sshd_config at all, which leaves
+# OpenSSH's built-in PermitRootLogin prohibit-password in force and makes the
+# board unreachable except over the serial console.
+
+PermitRootLogin yes
+PasswordAuthentication yes
+PubkeyAuthentication yes
+PermitEmptyPasswords no

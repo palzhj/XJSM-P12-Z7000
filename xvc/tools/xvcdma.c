@@ -19,6 +19,17 @@
  *   0x40400048  S2MM_DA        destination address (DDR)
  *   0x40400058  S2MM_LENGTH    bytes to receive (write starts the transfer)
  *   0x43C00044  word count     arms TLAST: the last popped word carries it
+ *   0x43C00048  drop count     TDO words discarded because the RX FIFO was full
+ *   0x43C0004C  tvalid cycles  clocks m_axis_tdo_tvalid was high
+ *   0x43C00050  tready cycles  clocks m_axis_tdo_tready was high
+ *   0x43C00054  pop cycles     clocks a word really moved (tvalid & tready)
+ *
+ * The three handshake counters are free-running at FCLK0, so this tool takes
+ * repeated snapshots and compares deltas. Whichever counter stops advancing
+ * first names the side that stalled:
+ *   tvalid flat, tready climbing  -> the shift engine stopped producing
+ *   tready flat, tvalid climbing  -> S2MM stopped accepting
+ *   both climbing, pop flat       -> the handshake itself is broken
  *
  * Build:
  *   arm-xilinx-linux-gnueabi-gcc -O2 -o xvcdma xvcdma.c
@@ -59,7 +70,12 @@
 #define J_CTRL  0x10
 #define J_DIV   0x14
 #define J_STATE 0x30
+#define J_STATUS 0x24
 #define J_DMAW  0x44
+#define J_DROP  0x48
+#define J_TVALID 0x4C
+#define J_TREADY 0x50
+#define J_POP    0x54
 
 static volatile uint32_t *dma, *jt;
 static uint8_t *pool;
@@ -80,27 +96,83 @@ static void die(const char *what)
     exit(1);
 }
 
-/* Wait until SR bit0 (halted) clears - i.e. the channel is running - or idle. */
-static int wait_not_halted(volatile uint32_t *base, unsigned sr_off, int ms)
-{
-    int i;
-    for (i = 0; i < ms * 100; i++) {
-        if (!(rd(base, sr_off) & 1)) return 0;
-        usleep(10);
-    }
-    return -1;
-}
+/* ------------------------------------------------------------------ *
+ * Handshake trace: which side of the m_axis_tdo stream stops first?
+ *
+ * 0x4C/0x50/0x54 are free-running cycle counters, so every sample is compared
+ * with the previous one. A counter that stops advancing has stopped being
+ * asserted, and the time of its last advance says which end gave up first.
+ * ------------------------------------------------------------------ */
+struct hs_trace {
+    uint32_t tvalid, tready, pop;        /* latest raw counts            */
+    uint32_t d_tvalid, d_tready, d_pop;  /* change since previous sample */
+    double   t_tvalid, t_tready, t_pop;  /* when each last advanced (s)  */
+    int      samples;
+};
 
-/* Wait until the channel reports idle (bit1) or completes. */
-static int wait_idle(volatile uint32_t *base, unsigned sr_off, int ms)
+/* Returns 0 when both DMA channels reached idle, -1 on timeout. */
+static int trace_run(int timeout_ms)
 {
-    int i;
-    for (i = 0; i < ms * 100; i++) {
-        uint32_t s = rd(base, sr_off);
-        if (s & 2) return 0;                 /* idle */
-        usleep(10);
+    struct hs_trace h;
+    double t0 = now_s(), next_print = 0.0;
+    uint32_t pv, pt, pp;
+    int i, mm2s_done = 0, s2mm_done = 0, rc = -1;
+
+    memset(&h, 0, sizeof(h));
+    pv = rd(jt, J_TVALID);
+    pt = rd(jt, J_TREADY);
+    pp = rd(jt, J_POP);
+
+    for (i = 0; i < timeout_ms; i++) {
+        double now = now_s() - t0;
+        uint32_t v = rd(jt, J_TVALID);
+        uint32_t t = rd(jt, J_TREADY);
+        uint32_t p = rd(jt, J_POP);
+        uint32_t msr = rd(dma, MM2S_DMASR);
+        uint32_t ssr = rd(dma, S2MM_DMASR);
+
+        h.d_tvalid = v - pv;
+        h.d_tready = t - pt;
+        h.d_pop    = p - pp;
+        if (h.d_tvalid) h.t_tvalid = now;
+        if (h.d_tready) h.t_tready = now;
+        if (h.d_pop)    h.t_pop    = now;
+        pv = v; pt = t; pp = p;
+        h.tvalid = v; h.tready = t; h.pop = p;
+        h.samples++;
+
+        if (now >= next_print) {
+            next_print = now + 0.25;
+            printf("    t=%7.3f s  tvalid=%u (+%u)  tready=%u (+%u)  pop=%u (+%u)"
+                   "  wleft=%u  drop=%u  stat=0x%08X\n",
+                   now, v, h.d_tvalid, t, h.d_tready, p, h.d_pop,
+                   rd(jt, J_DMAW), rd(jt, J_DROP), rd(jt, J_STATUS));
+        }
+
+        if (msr & 2) mm2s_done = 1;          /* bit1 = idle */
+        if (ssr & 2) s2mm_done = 1;
+        if (mm2s_done && s2mm_done) { rc = 0; break; }
+        usleep(1000);
     }
-    return -1;
+
+    printf("  ---- handshake trace (%d samples) ----\n", h.samples);
+    printf("  final:  tvalid=%u  tready=%u  pop=%u\n", h.tvalid, h.tready, h.pop);
+    printf("  last advance:  tvalid %.3f s   tready %.3f s   pop %.3f s  (from DMA start)\n",
+           h.t_tvalid, h.t_tready, h.t_pop);
+
+    if (h.t_tvalid + 0.005 < h.t_tready)
+        printf("  VERDICT: tvalid stopped first, %.3f s before tready\n"
+               "           -> the SHIFT ENGINE stopped producing words (RX FIFO starved)\n",
+               h.t_tready - h.t_tvalid);
+    else if (h.t_tready + 0.005 < h.t_tvalid)
+        printf("  VERDICT: tready stopped first, %.3f s before tvalid\n"
+               "           -> S2MM stopped accepting words\n",
+               h.t_tvalid - h.t_tready);
+    else
+        printf("  VERDICT: tvalid and tready stopped together\n"
+               "           -> both sides stalled at once; check whether pop was flat while\n"
+               "              tvalid and tready were still high (handshake bug)\n");
+    return rc;
 }
 
 int main(int argc, char **argv)
@@ -203,16 +275,19 @@ int main(int argc, char **argv)
     printf("    MM2S_LENGTH reads 0x%08X\n", rd(dma, MM2S_LENGTH));
     printf("  step E: running\n");
 
-    if (wait_idle(dma, MM2S_DMASR, 20000) < 0)
-        fprintf(stderr, "  MM2S did not go idle\n");
-    if (wait_idle(dma, S2MM_DMASR, 20000) < 0)
-        fprintf(stderr, "  S2MM did not go idle\n");
+    if (trace_run(20000) < 0)
+        fprintf(stderr, "  timed out: not both channels went idle\n");
     dt = now_s() - t0;
 
     printf("  done in %.4f s  ->  %.2f Mbit/s\n", dt, nbits / dt / 1e6);
     printf("  MM2S_DMASR=0x%08X  S2MM_DMASR=0x%08X\n",
            rd(dma, MM2S_DMASR), rd(dma, S2MM_DMASR));
     printf("  words left in 0x44 = %u (0 = all consumed)\n", rd(jt, J_DMAW));
+    printf("  0x48 drop=%u  0x24 status=0x%08X (rx_used=0x%02X tx_free=0x%02X)\n",
+           rd(jt, J_DROP), rd(jt, J_STATUS),
+           (rd(jt, J_STATUS) >> 8) & 0xFF, rd(jt, J_STATUS) & 0xFF);
+    printf("  0x4C tvalid=%u  0x50 tready=%u  0x54 pop=%u\n",
+           rd(jt, J_TVALID), rd(jt, J_TREADY), rd(jt, J_POP));
     printf("  TDO[0..7] = %08X %08X %08X %08X %08X %08X %08X %08X\n",
            tdo[0], tdo[1], tdo[2], tdo[3], tdo[4], tdo[5], tdo[6], tdo[7]);
     return 0;
