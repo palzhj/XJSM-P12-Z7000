@@ -1,7 +1,26 @@
 # DMA bring-up log
 
-Status: **hardware path works end to end, tail synchronisation still stalls.**
+Status: **both channels are healthy and 1917 of 2048 words move; the run stalls
+when the RX FIFO fills and S2MM stops draining.**
 Last updated 2026-11-12.
+
+> This document records the reasoning as it happened, including two hypotheses
+> that turned out to be wrong. For the current state and the next step see
+> [`SESSION_HANDOFF.md`](SESSION_HANDOFF.md).
+
+## Correction: DMACR bit1 is not Reset
+
+The IP's own VHDL settles it:
+
+```vhdl
+constant DMACR_RS_BIT      : integer := 0;
+constant DMACR_TAILPEN_BIT : integer := 1;   -- Tail descriptor pointer enable
+constant DMACR_RESET_BIT   : integer := 2;   -- Reset is bit 2, not bit 1
+```
+
+So `MM2S_DMACR = 0x00010003` is a **normal running configuration**, not a stuck
+reset. The driver writes `4` (bit 2) for reset, which is correct. An earlier
+section of this log blamed a stuck Reset bit; that was wrong.
 
 ## What is in place
 

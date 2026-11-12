@@ -316,7 +316,9 @@ Verified on hardware: bitstream `78e0b634` programmed, DMA registers respond, th
 device tree reserves the pool and a 65,536-bit run moved **1917 of 2048 words**
 through the DMA before a tail stall. The remaining synchronisation problem and
 the measurements are tracked in
-[`xvc/docs/DMA_BRINGUP.md`](xvc/docs/DMA_BRINGUP.md).
+[`xvc/docs/DMA_BRINGUP.md`](xvc/docs/DMA_BRINGUP.md); the live state, the
+environment and the next step are in
+[`xvc/docs/SESSION_HANDOFF.md`](xvc/docs/SESSION_HANDOFF.md).
 
 ---
 
