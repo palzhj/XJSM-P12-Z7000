@@ -1,5 +1,7 @@
 # XVC Web Console
 
+![XVC web console](web_console.png)
+
 > 2026-10-31
 > Address: **http://192.168.1.113/**
 

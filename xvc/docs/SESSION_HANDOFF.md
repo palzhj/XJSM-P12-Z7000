@@ -35,14 +35,19 @@ TCK = 10 MHz (fixed requirement, do not raise)
   4 writes + 1 read        973 ns
   32-bit shift (full)     4455 ns   =  7.18 Mbit/s   <- chunked path ceiling
   1 word via FIFO          201 ns   = 159.57 Mbit/s
-  FIFO stream 262144 bit  3160 ns/word = 10.13 Mbit/s  <- at the wire limit
+  FIFO stream 262144 bit  3160 ns/word = 10.13 Mbit/s  <- at the wire limit (see note)
   wire time for 32 bit                 =  3200 ns
 ```
 
 Three conclusions that are **settled** and should not be re-litigated:
 
-1. **The FIFO streaming path already hits 10.13 Mbit/s** on the board when the
-   CPU just pushes and drains. It cannot go faster while TCK is 10 MHz.
+1. **The FIFO streaming path already hits the wire limit** on the board when
+   the CPU just pushes and drains. It cannot go faster while TCK is 10 MHz.
+   Note on the arithmetic: 32 bits at 10 MHz is 3.200 us, but the probe reports
+   3.160 us, so the quoted 10.13 Mbit/s is 1.3% *above* the physical ceiling -
+   that is timer resolution over a 26 ms run, not a real overrun. Read it as
+   **10.0 Mbit/s, at the limit**. (Measured board-side; over TCP the same run is
+   5.6 Mbit/s, per conclusion 2.)
 2. **Over TCP that same run measures only 5.6 Mbit/s.** The remaining loss is in
    the server's software path (bit packing in `get_word`/`put_word`, one mmap
    read per loop iteration), not in JTAG.

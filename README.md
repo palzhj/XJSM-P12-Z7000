@@ -12,18 +12,21 @@ cable. Includes a 0.96" OLED status display and a web console.
 ## System Overview
 
 ```
-                   ┌──────────────────────────────────────────┐
-                   │  AC7Z020 (XC7Z020)                        │
-  PC / Vivado ────►│  ┌────────────┐   ┌───────────────────┐   │
-   TCP 2542/2543   │  │ PS: Linux  │──►│ PL: 13× jtag_ctrl │───┼──► J20 G1/G2
-   ... 2554        │  │  xvcserver │   │  + broadcast eng. │   │     │
-                   │  └────────────┘   │  + I2C EMIO       │   │     ▼
-                   │        │          └───────────────────┘   │  ┌──────────┐
-                   │        └── OLED (SSD1315, I2C1) ──────────┼─►│ AMD      │
-                   │                                          │  │ Xilinx   │
-                   │                                          │  │ FPGA     │
-                   │                                          │  └──────────┘
-                   └──────────────────────────────────────────┘
+                ┌──────────────────────────────────────────────┐
+                │  AC7Z020 (XC7Z020)                           │
+                │  ┌────────────┐   ┌───────────────────────┐  │                ┌─────────────┐
+ PC / Vivado ──►│  │ PS: Linux  │   │ PL: 13× jtag_ctrl     │────► J20 G1/G2 ──►│ AMD Xilinx  │
+  TCP 2542/2543 │  │            │──►│ + broadcast engine    │  │                │ FPGA        │
+  ... 2554      │  │ xvcserver  │   │ + I2C1 EMIO           │  │                │             │
+                │  └────────────┘   └─────────────┬─────────┘  │                └─────────────┘
+                └─────────────────────────────────┼────────────┘
+                                                  │ I2C1 (J20 pin33/35)
+                                                  │
+                                                  ▼
+                                          ┌────────────────────┐
+                                          │  OLED  SSD1315     │
+                                          │  128×64, I2C1      │
+                                          └────────────────────┘
 ```
 
 | Component | Description |
@@ -33,6 +36,17 @@ cable. Includes a 0.96" OLED status display and a web console.
 | **XVC server** | TCP `2542` (broadcast) + `2543..2554` (ch0..ch11), one session per channel |
 | **Web console** | `http://<board>/` — port status, mask, TCK, reset |
 | **OLED** | 128×64, shows 12 port states / broadcast mask / IP / TCK |
+
+### Web console
+
+![XVC web console](xvc/docs/web_console.png)
+
+`http://<board>/` — live view of all twelve channels plus the broadcast engine:
+per-channel **BC** membership and **TDO** source selection, client connection,
+state, TCK, FIFO occupancy and data moved. The **BROADCAST** row (top) shows the
+aggregate; its TDO cell names the channel currently feeding the broadcast TDO,
+and clicking it clears the mask. Details in
+[`xvc/docs/WEB_CONSOLE.md`](xvc/docs/WEB_CONSOLE.md).
 
 ---
 
@@ -128,6 +142,7 @@ test_bits/                      test bitstreams
 | [`xvc/docs/KNOWN_ISSUES.md`](xvc/docs/KNOWN_ISSUES.md) | **35 pitfalls hit** (with root cause and fix) |
 | [`xvc/docs/PETALINUX_LOCAL_BUILD.md`](xvc/docs/PETALINUX_LOCAL_BUILD.md) | Offline PetaLinux build |
 | [`xvc/tests/README.md`](xvc/tests/README.md) | Test suite description |
+| [`xvc/docs/pg245-v2.0.pdf`](xvc/docs/pg245-v2.0.pdf) | AMD **PG245 Debug Bridge v2.0** — the `From_AXI_to_JTAG` mode `jtag_ctrl` implements |
 | [`NOTICE`](NOTICE) | Third-party content and licensing notes |
 
 ---
@@ -174,9 +189,11 @@ Broadcast register block `0x43CD0000`:
 | IOB | 48 / 125 |
 | WNS / WHS | +0.307 ns / +0.048 ns |
 | Failing endpoints | 0 |
-| Shift throughput | 5.6–9.0 Mbit/s at TCK 10 MHz (see *How the Performance Is Achieved*) |
+| Shift throughput, CPU paths | 5.6–7.2 Mbit/s at TCK 10 MHz (see *Speed: HS2 cable vs the three XVC paths*) |
+| Shift throughput, DMA | **9.96 Mbit/s** — 99.6% of the 10 MHz wire rate |
 | Per-shift latency | 0.21–0.26 ms (6 bit) |
-| Full bitstream (measured on a Kintex-7 325T) | 91.5 Mbit / **15.9 s** |
+| Full bitstream (Kintex-7 325T, 91.5 Mbit) | CPU path **15.9 s** / DMA **9.19 s** |
+| Flash programming, 34.7 MB image | XVC **18 min 43 s** / local USB HS2 **14 min 02 s** |
 
 ---
 
@@ -203,7 +220,9 @@ That is the difference between "software toggling at a few hundred kHz" and a
 
 Each `shift` command is decomposed into 32-bit chunks. One chunk is one AXI4-Lite
 burst into the engine, and the engine shifts all 32 bits back-to-back with a
-single continuous TCK burst — no per-bit round trip, no CPU involvement.
+single continuous TCK burst — no per-bit round trip, no CPU involvement. This is
+the register interface PG245 specifies for the Debug Bridge in
+`From_AXI_to_JTAG` mode, reimplemented in `jtag_ctrl.v`.
 
 ### 3. Broadcast engine: twelve targets program at once
 
@@ -259,7 +278,7 @@ one hardware shift per queued word, with no software trigger at all.
 | AXI4-Lite register access | ~100 ns each, 4 writes + 1 read per 32-bit chunk |
 | 32 TCK edges at 10 MHz | 3.2 µs per chunk |
 | CPU overhead per chunk | ~3 µs (polling + `/dev/mem`) |
-| **Net measured** | **5.6–9.0 Mbit/s** (56–90% of a 10 MHz line rate) |
+| **Net measured, CPU path** | **5.6–7.2 Mbit/s** (56–72% of a 10 MHz line rate) |
 
 Measured end to end: a full **91,548,512-bit** Kintex-7 325T bitstream in
 **15.9 s** = **5.76 Mbit/s**, i.e. **58% of the 10 MHz line rate**.
@@ -275,9 +294,74 @@ it does not: both paths still cost **one register access per 32-bit word**, and
 that access (~2–3 µs through `/dev/mem`) is the real ceiling. Enabling streaming
 made long shifts correct at high speed but no faster overall.
 
-The next step that would actually move the number is **DMA** (let the PL read the
-bitstream from DDR itself, so the CPU stops touching registers per word), or a
-wider register interface so one write feeds more than 32 bits.
+That next step is now implemented: **DMA** lets the PL read the bitstream from
+DDR itself, so the CPU stops touching registers per word. It lands at
+**9.96 Mbit/s** — faster than a local cable doing a plain JTAG scan. See
+*Speed: HS2 cable vs the three XVC paths* below.
+
+### Speed: HS2 cable vs the three XVC paths
+
+Every path runs at the same **TCK = 10 MHz**, so they share one wire ceiling of
+**10.0 Mbit/s** (one bit per TCK edge). This is the fastest each was measured
+reaching it.
+
+| Path | What moves | Time | Speed | of wire |
+|---|---|---|---|---|
+| **USB HS2** — local cable `Digilent/210241403684` | 1,000,000-bit JTAG scan | 137 ms | **7.30 Mbit/s** | 73% |
+| **XVC · AXI4-Lite register** — PG245 `From_AXI_to_JTAG` scheme | 32-bit chunk | 4.455 µs | **7.18 Mbit/s** | 72% |
+| **XVC · FIFO** — register streaming via `0x1C`/`0x20` | 262,144 bit, board-side | 3.16 µs/word | **≈10.0 Mbit/s** (wire-limited) | 100% |
+| **XVC · DMA** — DDR ↔ shift engine, no CPU per word | 91,548,512 bit (whole bitstream) | 9.19 s | **9.96 Mbit/s** | **99.6%** |
+
+One number here needs qualifying. The FIFO figure is often quoted as
+**10.13 Mbit/s**, but 32 bits at 10 MHz take 3.200 µs and the measurement reports
+3.160 µs — 1.3% *faster than the wire*, which is physically impossible. That is
+timer/measurement error (0.04 µs over a 26 ms run), so it is quoted above as
+**≈10.0 Mbit/s, i.e. at the limit**, not above it. Two consequences: the FIFO
+path cannot be described as faster than DMA, and it is a board-side figure — the
+same run is 5.6–5.8 Mbit/s once TCP is in the path.
+
+The register row is the scheme PG245 defines for the Debug Bridge in
+**`From_AXI_to_JTAG`** mode: the host is a bus master on the *same* chip, and the
+block drives `tap_tck` / `tap_tms` / `tap_tdi` out to another board's JTAG pins.
+This design implements that block directly in
+[`jtag_ctrl.v`](xvc/vivado/rtl/jtag_ctrl.v) instead of instantiating the IP, so
+each `shift` is split into 32-bit chunks and every chunk costs a full AXI4-Lite
+round trip — write LENGTH / TMS / TDI, strobe CTRL, poll CTRL, read TDO. That
+round trip, not the wire, is what costs the 28% of line rate.
+
+**The DMA path beats a local USB cable**, 9.96 vs 7.30 Mbit/s. That is not a cable
+problem — the HS2 is clocked at 10 MHz too (`PARAM.FREQUENCY` reads 10000000).
+A JTAG scan is *command*-bound: one round trip per 32-bit word, which caps even a
+cable at ~73% of its wire rate. DMA turns the transfer into a single stream and
+reaches 99.6% without touching the clock.
+
+Two numbers that matter once this is on a network:
+
+| | |
+|---|---|
+| XVC · FIFO, end to end over TCP | 5.6–5.8 Mbit/s (56–58% of wire) — the server's software path, not JTAG |
+| XVC · AXI4-Lite register, same 91.5 Mbit payload as the DMA row | 15.9 s = 5.76 Mbit/s (58%) |
+
+So on one whole bitstream, DMA is **1.73× the CPU-driven path**: 9.19 s against
+15.9 s.
+
+### Transport comparison: the same flash job
+
+Pure scan rates are not the whole story once a real workload is involved.
+Programming the same 34.7 MB image into the same flash (MT25QU01G, 1 Gbit), same
+SPI-bridge flow, only the transport changed:
+
+| | XVC `192.168.1.113:2543` | local USB HS2 | HS2 speedup |
+|---|---|---|---|
+| SPI bridge download (7 MB) | 11.96 s | 11.29 s | 1.06x |
+| Erase + program + verify (34.7 MB) | 1108.8 s | 828.9 s | 1.34x |
+| **Total** | **18 min 43 s** | **14 min 02 s** | **1.33x** |
+
+Both at TCK 10 MHz. The bridge stage is a wash because it is dominated by
+configuration/DONE handling, and the flash stage improves only 1.34x despite the
+cable having a dedicated link — flash page programming and status polling, not
+the transport, set that time. Details in
+[`xvc/docs/FLASH_PROGRAMMING_FINDINGS.md`](xvc/docs/FLASH_PROGRAMMING_FINDINGS.md#xvc-vs-local-usb-cable--measured-2026-11-13).
 
 ---
 

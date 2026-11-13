@@ -276,53 +276,95 @@ let bcMask = (function(){
 function saveMask(){
   try { localStorage.setItem('xvc_bcmask_v2', String(bcMask)); } catch (e) {}
 }
+
+/* --- TDO selection ---------------------------------------------------------
+ * One invariant instead of three special cases:
+ *
+ *     bcastSel === TDO_BC   <=>   bcMask === 0
+ *     otherwise             bcastSel is a channel that is IN the mask
+ *
+ * which gives the rules for free:
+ *   no BC selected            -> TDO falls back to the BROADCAST row
+ *   TDO on BC, a BC appears   -> TDO moves to the first selected channel
+ *   TDO on a channel in mask  -> nothing else can move it
+ * TDO_BC is display state only: chsel (0x3C) always names a channel, and with an
+ * empty mask nothing is being broadcast, so chsel is irrelevant until a BC is
+ * selected again.
+ */
+const TDO_BC = 12;
 let bcastSel = 0;
+
+function inMask(ch){ return ((bcMask >> ch) & 1) !== 0; }
+function firstOn(){ for (let i = 0; i < 12; i++) if (inMask(i)) return i; return TDO_BC; }
+
+function reconcileTdo(){
+  if (bcMask === 0) bcastSel = TDO_BC;
+  else if (bcastSel === TDO_BC || !inMask(bcastSel)) bcastSel = firstOn();
+}
+
+async function pushMask(){
+  if (MOCK) return;
+  await fetch('cgi-bin/control?cmd=setbcmask&v=' + bcMask, {method:'POST'});
+}
+async function pushSel(){
+  if (MOCK || bcastSel === TDO_BC) return;   /* leave the last valid chsel in place */
+  await fetch('cgi-bin/control?cmd=setchsel&v=' + bcastSel, {method:'POST'});
+}
 
 /* Push the local mask to the hardware on page load so bcast_en matches the UI */
 function pushMaskOnLoad(){
+  reconcileTdo();
   fetch('cgi-bin/control?cmd=setbcmask&v=' + bcMask, {method:'POST'}).catch(function(){});
 }
 window.addEventListener('load', pushMaskOnLoad);
 
 async function toggleAll(on){
-  bcMask = on ? 0xFFF : 0;                  /* allow deselecting everything (= broadcast takes over no port) */
+  bcMask = on ? 0xFFF : 0;
   saveMask();
-  if (!on) { /* all deselected: keep the TDO source */ }
-  if (!((bcMask >> bcastSel) & 1) && bcMask) setTdo(firstOn());
+  reconcileTdo();
   if (MOCK) { render(await getStatus()); return; }
-  await fetch('cgi-bin/control?cmd=setbcmask&v=' + bcMask, {method:'POST'});
+  await pushMask();
+  await pushSel();
   refreshAll(400);
 }
 
 async function toggleCh(ch, on){
   if (on) bcMask |= (1 << ch); else bcMask &= ~(1 << ch);
-  /* bcMask may become 0: the CGI turns bcast_en off and the broadcast engine takes over no pins */
   saveMask();
-  /* allow deselecting everything (mask 0 = broadcast to no channel) */
-  if (bcMask && !((bcMask >> bcastSel) & 1)) setTdo(firstOn());
-  if (MOCK) return;
-  await fetch('cgi-bin/control?cmd=setbcmask&v=' + bcMask, {method:'POST'});
+  reconcileTdo();                            /* may empty the mask -> TDO = BC */
+  if (MOCK) { render(await getStatus()); return; }
+  await pushMask();
+  await pushSel();
   refreshAll(500);
 }
-function firstOn(){
-  for (let i = 0; i < 12; i++) if ((bcMask >> i) & 1) return i;
-  return 0;
+
+/* Clicking TDO on the BROADCAST row is the shortcut for "stop broadcasting". */
+async function stopBcast(){
+  if (bcMask === 0) return;                  /* already off */
+  bcMask = 0;
+  saveMask();
+  reconcileTdo();
+  if (MOCK) { render(await getStatus()); return; }
+  await pushMask();
+  refreshAll(500);
 }
+
 function maskNames(){
   const n = [];
   for (let i = 0; i < 12; i++) if ((bcMask >> i) & 1) n.push('AMC' + (i+1));
   return n.length === 12 ? 'all 12 channels' : n.join(', ');
 }
+
 async function setTdo(ch){
-  /* The TDO source must be a channel in the broadcast: auto-check it so the semantics stay consistent */
-  if (!((bcMask >> ch) & 1)) {
+  /* The TDO source must be a channel in the broadcast: auto-check it so the
+   * semantics stay consistent (this is the only path that grows the mask). */
+  if (!inMask(ch)) {
     bcMask |= (1 << ch);
     saveMask();
-    fetch('cgi-bin/control?cmd=setbcmask&v=' + bcMask, {method:'POST'}).catch(function(){});
+    await pushMask();
   }
   bcastSel = ch;
-  if (MOCK) return;
-  await fetch('cgi-bin/control?cmd=setchsel&v=' + ch, {method:'POST'});
+  await pushSel();
   refreshAll(500);
 }
 
@@ -351,7 +393,9 @@ function render(d){
     + '<td><div class="chname"><span class="chdot ' + (bcOn ? 'on' : '') + '"></span>BROADCAST</div></td>'
     + '<td class="cx"><input type="checkbox" id="bcAll" title="Select / deselect all"'
       + (bcMask === 0xFFF ? ' checked' : '') + ' onchange="toggleAll(this.checked)"></td>'
-    + '<td class="cx mono" style="color:var(--acc)">AMC' + (bcastSel + 1) + '</td>'
+    + '<td class="cx mono"><a href="#" style="color:var(--acc)" onclick="stopBcast();return false;"'
+      + ' title="' + (bcOn ? 'Click to stop broadcasting (clears every BC)' : 'No channel feeds the broadcast TDO')
+      + '">' + (bcOn ? 'AMC' + (bcastSel + 1) : 'BC') + '</a></td>'
     + '<td class="mono">2542</td>'
     + '<td>' + ((d.bcast_clients > 0)
           ? '<span class="badge conn">CONNECTED</span>'
@@ -413,7 +457,11 @@ function render(d){
   if (bcAllEl) bcAllEl.checked = (bcMask === 0xFFF);
   /* Broadcast status comes from ch12 (the broadcast engine): bcast = CTRL bit4, bcmask = the follow mask.
      These values are trustworthy once the bitstream contains the 13th engine; sync the mask only while broadcast is enabled. */
-  if (typeof d.bcast_tdo === 'number') bcastSel = d.bcast_tdo & 0xF;
+  if (bcMask === 0) {
+    bcastSel = TDO_BC;
+  } else if (typeof d.bcast_tdo === 'number' && inMask(d.bcast_tdo & 0xF)) {
+    bcastSel = d.bcast_tdo & 0xF;
+  }
   updated.textContent = 'updated ' + new Date().toLocaleTimeString('en-GB');
   foot.textContent = MOCK ? 'mock preview' : '';
 }
