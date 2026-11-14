@@ -33,7 +33,7 @@ read the status of, and program the FPGA chain attached to J20 (G1), replacing t
 | Programming duration | 23.8 s (USB cable baseline 9.56 s) |
 | Data integrity | 60,000-bit BYPASS passthrough with 0 bit errors |
 | Network integrity | 32 MB random file MD5 matches, NIC errors=0 |
-| TCK | 10 MHz by default (`-d 5`), can be slowed via `settck` |
+| TCK | 10 MHz by default (`-d 5`); `-d` caps the divider, so a client may slow it via `settck` and may go faster up to the cap. Engine verified to 25 MHz (`-d 2`), 50 MHz fails. Vivado itself only ever requests 10 MHz |
 
 ---
 

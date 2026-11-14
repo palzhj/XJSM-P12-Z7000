@@ -31,7 +31,7 @@ AMD Xilinx FPGA chain        (external JTAG chain)
 | Single-channel FPGA programming | **10.27 s** (20/20 runs, ±0.36%) |
 | 12 channels in parallel | **6.2× speedup** |
 | Flash programming (with verification) | **200.7 s** |
-| TCK | up to 10 MHz (DIV=5) |
+| TCK | 10 MHz default (DIV=5) and the rate Vivado always requests over XVC; the engine is verified to **25 MHz** (`-d 2`), 50 MHz (`-d 1`) fails |
 | XVC ports | 2542 (broadcast), 2543~2554 (channels 0~11) |
 
 ## 1.4 Software Versions

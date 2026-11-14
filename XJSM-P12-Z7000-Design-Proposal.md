@@ -91,7 +91,7 @@ I2C1_SCL_T  ──►  T (1 = high-Z)
 |---|---|
 | Protocol | XVC 1.0: `getinfo:` / `settck:<ns>` / `shift:<bits><tms><tdi>` |
 | Max shift | 4,194,304 bit (4 Mbit) — Vivado actually requests 523,511 bit |
-| TCK | 10 MHz by default (`-d 5`); `settck` can slow it down |
+| TCK | 10 MHz by default (`-d 5`); `settck` can slow it down; engine verified to 25 MHz (`-d 2`), 50 MHz fails |
 | Concurrency | fork-per-client + `flock` to serialize the bus |
 | Robustness | `read_full` / `write_full` (short reads/writes), 1 MB socket buffer |
 | Statistics | prints `STAT bits=… elapsed=… rate=…` when a connection ends |

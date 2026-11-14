@@ -127,7 +127,7 @@ static int do_shift(int nbits, const uint8_t *tms, const uint8_t *tdi, uint8_t *
 |---|---|
 | Single-channel programming | 10.27 s / 91.5 Mbit (20/20, ±0.36%) |
 | Broadcast programming | serial 12× ✗ → single engine T ✅ (source changed, pending build) |
-| TCK | 10 MHz (DIV=5, 100 MHz / (2×5)) |
+| TCK | 10 MHz default (DIV=5, 100 MHz / (2×5)); engine verified to 25 MHz (`-d 2`) |
 | Flash programming (with verify) | 200.7 s |
 
 ## 6. Files

@@ -309,9 +309,31 @@ below.
 
 ### Speed: HS2 cable vs the three XVC paths
 
-Every path runs at the same **TCK = 10 MHz**, so they share one wire ceiling of
-**10.0 Mbit/s** (one bit per TCK edge). This is the fastest each was measured
-reaching it.
+All four paths are measured at **TCK = 10 MHz**, the common benchmark clock, so
+they share one wire ceiling of **10.0 Mbit/s** (one bit per TCK edge) and the
+last column says how much of it each reaches.
+
+**10 MHz is the reference point, not the module's ceiling.** TCK is
+`100 MHz / (2 x DIV)`, and the engine has been verified at **25 MHz** (`-d 2`):
+the same 36 MB configuration takes **16.69 s** (5 runs, sigma 20 ms) - the 2.0x
+the divider predicts - with IDCODE still correct. `-d 4` (12.5 MHz) and `-d 3`
+(16.7 MHz) also read correctly. **50 MHz (`-d 1`) fails**: IDCODE comes back as
+`0xFFFFFFFF`, so 25 MHz is the current verified maximum.
+
+What actually sets the rate in a given deployment depends on the server, because
+`-d` means different things in the two:
+
+| server | what `-d` does | what Vivado asks for | rate you get |
+|---|---|---|---|
+| `xvcserver_dma` (single-channel) | **locks** the divider; `settck` is ignored on purpose | 100 ns (10 MHz) | exactly `-d` - 25 MHz with `-d 2`, which is how the 16.69 s was measured |
+| `xvcserver_g1` (product) | a **cap**: `settck` is honoured, clamped to >= the `-d` divider | 100 ns (10 MHz) | 10 MHz whatever `-d` says |
+
+Vivado's XVC target exposes exactly one TCK: `list_property_value
+PARAM.FREQUENCY` on an open XVC target returns only `10000000`. So with the
+product server Vivado runs at 10 MHz and raising `-d` changes nothing -
+measured: `-d 2` gives 32.58 s against `-d 5`'s 32.62 s for the same 36 MB
+image, while the engine's IDCODE at the same `-d 2` (no `settck` sent) reads
+correctly at 25 MHz. The faster clock is available; something has to ask for it.
 
 | Path | What moves | Time | Speed | of wire |
 |---|---|---|---|---|
@@ -409,7 +431,9 @@ chain can do with no FPGA transport in the way.
 | Flash, 34.7 MB | 1490.9 s = 24 min 51 s | 1110.9 s = 18 min 31 s | 1293.2 s = 21 min 33 s | **842.5 s = 14 min 02 s** |
 | CPU per 32-bit word | 4.96 us, core saturated | ~0.34 us essential | 0.57 us, 15.5% duty | n/a - hw_server process, not measured |
 
-All four at TCK = 10 MHz, same 36 MB image (`test_bits/top.bit`), same bridge
+All four at TCK = 10 MHz - the benchmark reference clock, which is also the only
+rate Vivado's XVC client requests; the engine itself is verified to 25 MHz, see
+*Speed* above - on the same 36 MB image (`test_bits/top.bit`), same bridge
 (`spi_xcku15p_pullnone.bit`), same flash part (MT25QU01G). A/B/C are PL designs
 driven over XVC; HS2 bypasses the FPGA and drives the chain from the host, so it
 pays neither protocol nor network. HS2's earlier `7.30 Mbit/s` was a 1 Mbit
@@ -494,11 +518,18 @@ TCP traffic that cannot be overlapped because the protocol is strictly
 request/response.** The TDO packing was the only worthwhile hotspot and it is
 fixed (0.95 s -> 0.15 s).
 
-Final state at 10 MHz (2026-11-15): `image.ub bfcd3b3a...`, `BOOT.BIN fd2b51f0...`,
-server `xvcserver_dma -a 0x43C00000 -d 5 -m` on port 2543, DMA IRQ-driven, no
-register-path fallback, 33.377 s mean over 3 runs. TCK deliberately held at
-10 MHz; 25 MHz was measured working (16.69 s, 5 runs, sigma 20 ms) and left
-available in the server as `-d 2` if the trade is ever wanted.
+Final state (2026-11-15): `image.ub bfcd3b3a...`, `BOOT.BIN fd2b51f0...`, server
+`xvcserver_dma -a 0x43C00000 -d 5 -m` on port 2543, DMA IRQ-driven, no
+register-path fallback, 33.377 s mean over 3 runs at the 10 MHz benchmark clock.
+
+That clock is a benchmarking choice, not a limit: `-d 2` runs the same job in
+16.69 s (5 runs, sigma 20 ms) once the server is allowed to hold that rate, and
+50 MHz fails. Two caveats keep it from being free. `xvcserver_g1` (the product
+server) treats `-d` as a cap and honours the client's `settck`, so Vivado -
+which only ever offers 10 MHz on an XVC target - keeps it at 10 MHz no matter
+what `-d` says; measured, `-d 2` and `-d 5` both give ~32.6 s. And 25 MHz was
+measured on the single-channel DMA build; the 12-channel design reads IDCODE
+correctly at that divider but has not been benchmarked there.
 
 The DMA data path was never the bottleneck. The one real hotspot in the server
 was the TDO packing: `put_word` did a 5-byte read-modify-write on both sides for
@@ -915,7 +946,7 @@ environment and the next step are in
 | No QSPI | This carrier board has no configuration flash; the system lives entirely on SD |
 | ramdisk root filesystem | Not persistent across power cycles; store the serial number in `SN.TXT` on the SD card |
 | busybox has no `pkill` | Kill processes with `kill -9 $(ps\|grep\|awk)` |
-| `-d` is an **upper bound** | `-d 5` = 10 MHz maximum; the client may request slower |
+| `-d` is a **divider cap**, not a rate | TCK = 100 MHz / (2 x `-d`), so `-d 5` = 10 MHz, `-d 2` = 25 MHz. The client may request slower via `settck`; it cannot exceed the cap. `xvcserver_g1` honours `settck`, `xvcserver_dma` locks to `-d` |
 | Broadcast mask is a static reservation | Channels in the mask stay reserved after the session ends; clear the mask in the UI |
 
 See [`KNOWN_ISSUES.md`](xvc/docs/KNOWN_ISSUES.md) for the full pitfall list.

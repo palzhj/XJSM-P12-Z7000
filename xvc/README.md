@@ -33,6 +33,15 @@ The short version: the DMA path is what makes bulk programming CPU-free, it wins
 the few-large-shift workload and loses the many-small-transaction one, and the
 local cable still wins every row — XVC buys remote access, not throughput.
 
+The 10 MHz is the common benchmark clock, not the module's ceiling: TCK is
+`100 MHz / (2 × DIV)`, the engine is verified at **25 MHz** (`-d 2`, 36 MB in
+16.69 s, 2.0× faster), and 50 MHz fails. It also happens to be the only rate
+Vivado's XVC client ever requests, which is why the product server stays at
+10 MHz even when `-d` is raised — the two servers treat `-d` differently
+(`xvcserver_dma` locks it, `xvcserver_g1` caps with it). The
+[top-level README](../README.md#speed-hs2-cable-vs-the-three-xvc-paths) has the
+measurements.
+
 ## Status of the original port (the sections below)
 
 | Item | Status |
@@ -198,8 +207,9 @@ and power up — it boots automatically.
 
 ### 5.1 Current stack (12-channel design + DMA path)
 
-Measured on the deployed v24 image and the single-channel DMA build, TCK 10 MHz,
-against the external XCKU15P (IDCODE `0x14A56093`):
+Measured on the deployed v24 image and the single-channel DMA build at the
+10 MHz benchmark clock (the engine runs to 25 MHz — see above), against the
+external XCKU15P (IDCODE `0x14A56093`):
 
 | Item | Result |
 |---|---|
