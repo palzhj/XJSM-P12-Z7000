@@ -1,0 +1,35 @@
+/include/ "system-conf.dtsi"
+/ {
+	/* 内核启动参数
+	 * - earlycon / console：串口输出（PS UART1 = MIO48/49，115200）
+	 * - clk_ignore_unused：避免未用时钟被关，影响 PL/UIO
+	 * - uio_pdrv_genirq.of_id：让 PL 侧 generic-uio 节点绑定到 uio 驱动
+	 */
+	chosen {
+		bootargs = "earlycon console=ttyPS0,115200 clk_ignore_unused uio_pdrv_genirq.of_id=generic-uio";
+	};
+
+	/* Userspace DMA（XVC 引擎）：内核持有 AXI DMA 与 IRQ（SPI 29/30），
+	 * 本节点把 MM2S/S2MM 暴露为 /dev/dma_proxy_tx 与 /dev/dma_proxy_rx。 */
+	dma_proxy {
+		compatible = "xlnx,dma_proxy";
+		dmas = <&dma 0 &dma 1>;
+		dma-names = "dma_proxy_tx", "dma_proxy_rx";
+	};
+};
+
+/* Front-panel SSD1315 OLED (design doc §4.4).
+ *
+ * PS I2C1 is routed through EMIO to PL pins by xvc/vivado/build_g1_oled.tcl
+ * (J20-35/V15 = SCL, J20-33/U20 = SDA), so the controller lives at
+ * 0xE0005000 with no MIO pads behind it.  The userspace jsmdisp driver talks
+ * to it through /dev/i2c-1 at address 0x3C.
+ *
+ * 100 kHz is deliberate: the FPGA IOB weak pull-up (~10-50k) cannot meet the
+ * 400 kHz rise-time limit.  Fit 2.2k external pull-ups to 3.3 V before
+ * raising clock-frequency.
+ */
+&i2c1 {
+	status = "okay";
+	clock-frequency = <100000>;
+};
