@@ -6,6 +6,35 @@ ported to **Zynq-7000 (ALINX AC7Z020)**: build a PS7 + Debug Bridge + ILA design
 Vivado, produce a bootable image with PetaLinux 2022.2, run an XVC service on the
 board, and let Vivado reach the debug resources in the PL over Ethernet.
 
+## What this directory contains now
+
+The tree has grown well past that first port, and the documents below describe the
+original one. Three generations of XVC path live here:
+
+| Generation | What it is | Where | State |
+|---|---|---|---|
+| Debug Bridge + ILA port | the KB port this document walks through (PS7 + `dbg_axi2bscan` + `dbg_bscan2hub` + ILA) | `vivado/build.tcl`, `petalinux/xvc` | works, except ILA-over-XVC ([KI-1](docs/KNOWN_ISSUES.md)) |
+| 12-channel production design | 12 `jtag_ctrl` engines + broadcast block, FIFO streaming, `xvcserver_g1`; drives external TAPs, no Debug Bridge | `vivado/build_g1_oled.tcl`, deployed as v24 | verified, on the board |
+| Three single-channel projects | `reg` / `fifo` / `dma`, one per transport path, measured side by side | [`vivado/single/`](vivado/single/) | verified end to end, tag `v18` |
+| DMA data path | `dma_proxy` kernel module + `xvcserver_dma` | [`kernel/`](kernel/), [`petalinux/dma-merge/`](petalinux/dma-merge/) | verified end to end |
+
+Measured, TCK 10 MHz, same 36 MB image (`test_bits/top.bit`), same bridge and flash
+part — the full table with run counts is in the
+[top-level README](../README.md#single-channel-comparison-projects):
+
+| Path | 36 MB config | 7 MB bridge | 34.7 MB flash | CPU / word |
+|---|---|---|---|---|
+| A — register (`single/reg`) | 50.292 s | 16.24 s | 24 min 51 s | 4.96 us |
+| B — FIFO (`single/fifo`) | 32.619 s | 12.20 s | 18 min 31 s | ~0.34 us |
+| C — DMA (`single/dma`) | 33.377 s | **8.40 s** | 21 min 33 s | 0.57 us |
+| HS2 — local USB cable | **30.324 s** | 7.13 s | 14 min 02 s | n/a |
+
+The short version: the DMA path is what makes bulk programming CPU-free, it wins
+the few-large-shift workload and loses the many-small-transaction one, and the
+local cable still wins every row — XVC buys remote access, not throughput.
+
+## Status of the original port (the sections below)
+
 | Item | Status |
 |---|---|
 | Vivado Block Design / synthesis / implementation / bitstream / XSA | ✅ Done (timing met, LUT 3.54%) |
@@ -16,6 +45,10 @@ board, and let Vivado reach the debug resources in the PL over Ethernet.
 | ILA waveform capture (local JTAG) | ✅ Verified on hardware (counter 0x85→0x8a) |
 | 12 JTAG port groups (J20/J21) + 13 TCP ports | ✅ Implemented, synthesized/implemented, on hardware |
 | **Vivado displays the ILA over XVC** | ❌ Stuck at `DONE status = 0`, see [KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) |
+| 12-channel design (12 engines + broadcast, FIFO streaming) | ✅ Deployed (v24), `xvcserver_g1` on 2543..2554 |
+| Single-channel projects A/B/C | ✅ Built, measured, tag `v18` |
+| DMA data path (DDR ↔ shift engine, no CPU per word) | ✅ Verified end to end (36 MB config, 34.7 MB flash) |
+| Remote programming of an external KU15P over XVC | ✅ Verified (IDCODE `0x14A56093`, 36 MB in 33.4 s) |
 
 ---
 
@@ -63,8 +96,16 @@ Key parameters (`vivado/build.tcl`):
 | `vivado/tcl/ps7_config.tcl` | The 565 PS7 parameters (auto-generated) |
 | `vivado/rtl/bscan_tap.v` + `build_ext.tcl` | `C_BSCAN_MUX=3` control experiment (abandoned, see [KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) KI-1) |
 | `vivado/rtl/jtag12_io.v` + `constraints/jtag12.xdc` | 12 JTAG (TCK/TMS/TDI/TDO) port groups mapped to J20/J21 (see [docs/JTAG12_J20_J21.md](docs/JTAG12_J20_J21.md)) |
-| `petalinux/xvc` | PetaLinux project |
+| `petalinux/xvc` | PetaLinux 2022.2 project (debug-bridge port) |
 | `petalinux/apps/xvcserver/xvcserver.c` | XVC server source (derived from XAPP1251 + two fixes) |
+| `vivado/single/{reg,fifo,dma,dma64}` | the three single-channel comparison projects (+ the 64-bit word variant), each self-contained with its own `build.tcl` |
+| `vivado/build_single.tcl`, `constraints/g1_single.xdc` | shared driver/constraints for the single-channel builds |
+| `kernel/` | `dma-proxy` kernel module + bitbake recipe (`inherit module`, autoload) |
+| `petalinux/dma-merge/` | 2023.1 overlay for the DMA image: `apply.sh`, DT node, recipe install |
+| `tools/xvcserver_dma.c` | single-channel XVC server, DMA + register path (`-m`, `-d <div>`) |
+| `tools/dmaprobe.c` | DMA tracing harness used during bring-up |
+| `tools/xvc_binary_client.py` | binary XAPP1251 client for measuring a path without Vivado |
+| `tools/{regbench,fifobench,w64dma,xvcserver_chunkonly}.c` | per-path benchmarks behind the A/B/C numbers |
 | `out/` | Bitstream, XSA, LTX, ILA capture CSVs |
 | `out/petalinux/` | BOOT.BIN, image.ub, boot.scr, dtb, backup of the factory BOOT.BIN |
 | `sim/` | cocotb + iverilog bit-order regression tests |
@@ -84,6 +125,18 @@ Measured (`xc7z020clg400-2`): BD validation passes; `All user specified timing c
 LUT 1,885 (3.54%), FF 2,822 (2.65%), BRAM 0.5 (0.36%).
 Outputs: `out/system_wrapper.bit`, `out/system.xsa` (includes the bitstream), `out/system.ltx`.
 
+### 3.1b Single-channel projects
+
+Each of the three comparison projects is standalone and builds the same way:
+
+```bash
+cd xvc/vivado/single/dma            # or reg, fifo, dma64
+vivado -mode batch -source build.tcl
+```
+
+Outputs land in that project's `out/` (`system_wrapper.bit`, `system.xsa`), which is
+gitignored — only the sources are tracked.
+
 ### 3.2 PetaLinux (inside a container; environment setup in §7)
 
 ```bash
@@ -94,7 +147,18 @@ petalinux-package --boot --fsbl images/linux/zynq_fsbl.elf \
   --fpga images/linux/system.bit --u-boot images/linux/u-boot.elf --force
 ```
 
-Configuration highlights (all already baked into the project):
+Two PetaLinux projects are involved, and the split matters:
+
+- `petalinux/xvc` (this section) is the **2022.2** project for the debug-bridge port.
+- The **12-channel** and **single-channel DMA** images were built with **2023.1**
+  (kernel 6.1.5). Their kernel module and recipes are applied by
+  [`petalinux/dma-merge/apply.sh`](petalinux/dma-merge/), which drops
+  `recipes-modules/dma-proxy`, `recipes-apps/{dmaprobe,xvcserver-dma}` and the DT
+  node into an existing 2023.1 project, then appends them to the image. See
+  [petalinux/dma-merge/README.md](petalinux/dma-merge/README.md) for the three
+  driver defects that had to be fixed before DMA moved a single word.
+
+Configuration highlights (all already baked into the 2022.2 project):
 
 - bootargs: `earlycon console=ttyPS0,115200 clk_ignore_unused uio_pdrv_genirq.of_id=generic-uio`
 - rootfs: initramfs (only BOOT.BIN + image.ub are needed)
@@ -132,6 +196,27 @@ and power up — it boots automatically.
 | TCP ports | 2542 broadcast → `xvcServer_v1.0:2048`; 2543 channel 0 → same; 2544+ have no engine → connection reset |
 | IDCODE (2542 / 2543) | Both read `0x0A003093` |
 
+### 5.1 Current stack (12-channel design + DMA path)
+
+Measured on the deployed v24 image and the single-channel DMA build, TCK 10 MHz,
+against the external XCKU15P (IDCODE `0x14A56093`):
+
+| Item | Result |
+|---|---|
+| Shift rate, register path (A) | 7.55 Mbit/s (chunk-limited, `0x28` DONE counter verified) |
+| Shift rate, FIFO (B) / DMA (C) | 9.97 / 9.94 Mbit/s — 99.4–99.7% of the 10 MHz wire |
+| 36 MB configuration | A 50.292 s, B 32.619 s, C **33.377 s**, HS2 cable 30.324 s |
+| SPI bridge download, 7 MB | A 16.24 s, B 12.20 s, C **8.40 s**, HS2 7.13 s |
+| Flash erase+program+verify, 34.7 MB | A 24:51, B 18:31, C 21:33, HS2 14:02 |
+| CPU per 32-bit word | A 4.96 us, B ~0.34 us, C 0.57 us (15.5% duty) |
+| DMA correctness | 563 transfers, `pop == words` exactly, 0 drops, `DMASR = 0x1002` |
+| Register-path fallback | none on the DMA build (`chunk_bits = 0`) |
+
+Two things the numbers do not say, and should: C does **not** beat B end to end
+(2.3% slower, ~1.7x B's CPU) — its value is CPU offload and few-large-shift
+workloads — and neither beats the local cable, because XVC pays a protocol round
+trip the cable does not.
+
 ## 6. Known Issues
 
 Details (symptoms, eliminated hypotheses, workarounds) live in a separate document:
@@ -141,7 +226,7 @@ Summary:
 
 | ID | Issue | Status |
 |---|---|---|
-| KI-1 | Vivado cannot see the ILA over XVC (`DONE status = 0`) | Unresolved, needs vendor support; workaround is ILA over local JTAG |
+| KI-1 | Vivado cannot see the ILA over XVC (`DONE status = 0`) | Unresolved, needs vendor support; workaround is ILA over local JTAG. Note this only affects the debug-bridge port — the 12-channel and single-channel designs implement the TAP directly and drive an external chain, so there is no Debug Bridge or ILA to display |
 | KI-2 | After loading a bitstream with a JTAG cable, XVC often cannot connect | Diagnosed (BSCAN mux latch); let the FSBL configure the PL |
 | KI-3 | Host Ubuntu 26.04 cannot build PetaLinux 2022.2 directly | Worked around with a container (see §7) |
 
@@ -214,3 +299,7 @@ Local design documents:
 - [`docs/STATUS.md`](docs/STATUS.md) — per-item status, verified/excluded list
 - [`docs/KNOWN_ISSUES.md`](docs/KNOWN_ISSUES.md) — known issues (34 entries with root causes)
 - [`docs/MANUFACTURING.md`](docs/MANUFACTURING.md) — factory programming work instruction
+- [`docs/DMA_BRINGUP.md`](docs/DMA_BRINGUP.md) — the DMA bring-up trace and the stale-bitstream root cause
+- [`docs/CHANNELS12.md`](docs/CHANNELS12.md) — the 12-engine + broadcast design
+- [`docs/BUILD_2023_1_FINDINGS.md`](docs/BUILD_2023_1_FINDINGS.md) — PetaLinux 2023.1 build notes
+- [`petalinux/dma-merge/README.md`](petalinux/dma-merge/README.md) — the DMA image overlay and its defect history
