@@ -53,7 +53,7 @@ measurements.
 | Vivado enumerates the Debug Bridge over XVC | ✅ Verified on hardware (`debug_bridge_0`, IDCODE `0x0A003093`) |
 | ILA waveform capture (local JTAG) | ✅ Verified on hardware (counter 0x85→0x8a) |
 | 12 JTAG port groups (J20/J21) + 13 TCP ports | ✅ Implemented, synthesized/implemented, on hardware |
-| **Vivado displays the ILA over XVC** | ❌ Stuck at `DONE status = 0`, see [KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) |
+| **Vivado displays the ILA over XVC** | ❌ **Not fixed.** Still `DONE status = 0` / "No matching hw_ilas were found" — see [KI-1](docs/KNOWN_ISSUES.md#ki-1-ila-not-shown-over-xvc-done-status--0). Only the legacy debug-bridge port is affected: it has no bearing on the shipped design, and every ILA capture in this repo is over the local JTAG cable (`tools/ila_cap4.tcl` opens `localhost:3121`, not an XVC URL) |
 | 12-channel design (12 engines + broadcast, FIFO streaming) | ✅ Deployed (v24), `xvcserver_g1` on 2543..2554 |
 | Single-channel projects A/B/C | ✅ Built, measured, tag `v18` |
 | DMA data path (DDR ↔ shift engine, no CPU per word) | ✅ Verified end to end (36 MB config, 34.7 MB flash) |
@@ -236,7 +236,7 @@ Summary:
 
 | ID | Issue | Status |
 |---|---|---|
-| KI-1 | Vivado cannot see the ILA over XVC (`DONE status = 0`) | Unresolved, needs vendor support; workaround is ILA over local JTAG. Note this only affects the debug-bridge port — the 12-channel and single-channel designs implement the TAP directly and drive an external chain, so there is no Debug Bridge or ILA to display |
+| KI-1 | Vivado cannot see the ILA over XVC (`DONE status = 0`) | **Not fixed** — unresolved since it was diagnosed, needs vendor support. Workaround is ILA over local JTAG. Only the debug-bridge port is affected: the 12-channel and single-channel designs implement the TAP directly and drive an external chain, so there is no Debug Bridge or ILA to display |
 | KI-2 | After loading a bitstream with a JTAG cable, XVC often cannot connect | Diagnosed (BSCAN mux latch); let the FSBL configure the PL |
 | KI-3 | Host Ubuntu 26.04 cannot build PetaLinux 2022.2 directly | Worked around with a container (see §7) |
 
