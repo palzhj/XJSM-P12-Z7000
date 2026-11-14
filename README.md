@@ -404,7 +404,7 @@ chain can do with no FPGA transport in the way.
 | LUT / FF / BRAM | 570 / 844 / 0 | 1069 / 1060 / 0 | **3409 / 4266 / 3** | n/a - no PL design |
 | WNS | +2.543 ns | +2.342 ns | +1.580 ns | n/a |
 | Shift rate | 7.55 Mbit/s | 9.97 Mbit/s | 9.94 Mbit/s | **9.59 Mbit/s** sustained |
-| FPGA config, 36 MB | 50.292 s sigma 23.7 ms | 32.619 s sigma 27.0 ms | 33.377 s sigma 30 ms | **30.324 s sigma 2 ms** |
+| FPGA config, 36 MB | 50.292 s sigma 23.7 ms (10 runs) | 32.619 s sigma 27.0 ms (10 runs) | 33.377 s sigma 30 ms (3 runs) | **30.324 s sigma 2 ms** (3 runs) |
 | SPI bridge (7 MB) | 16.24 s | 12.20 s | 8.40 s | **7.13 s** |
 | Flash, 34.7 MB | 1490.9 s = 24 min 51 s | 1110.9 s = 18 min 31 s | 1293.2 s = 21 min 33 s | **842.5 s = 14 min 02 s** |
 | CPU per 32-bit word | 4.96 us, core saturated | ~0.34 us essential | 0.57 us, 15.5% duty | n/a - hw_server process, not measured |
@@ -414,6 +414,14 @@ All four at TCK = 10 MHz, same 36 MB image (`test_bits/top.bit`), same bridge
 driven over XVC; HS2 bypasses the FPGA and drives the chain from the host, so it
 pays neither protocol nor network. HS2's earlier `7.30 Mbit/s` was a 1 Mbit
 scan, where startup dominates; sustained over 36 MB it is 9.59 Mbit/s.
+
+Provenance, because the run counts differ: the configuration figures are 10-run
+means for A and B but 3-run means for C and HS2, so the sigmas are not directly
+comparable - HS2's 2 ms is partly just a shorter sample. The
+bridge figures are 2 runs for C and HS2, single runs for A and B. The flash rows
+are one erase+program+verify each: A and B were measured on the 13-engine design
+against this same KU15P and part, C on the single-channel DMA design, and HS2 is
+the documented 2026-11-13 run.
 
 **HS2 wins every row, and by construction**: at the same TCK it is 10% faster
 than the best PL path at configuration and 24% faster at flash, because it pays
