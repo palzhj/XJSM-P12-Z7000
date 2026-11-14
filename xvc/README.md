@@ -53,7 +53,7 @@ measurements.
 | Vivado enumerates the Debug Bridge over XVC | ✅ Verified on hardware (`debug_bridge_0`, IDCODE `0x0A003093`) |
 | ILA waveform capture (local JTAG) | ✅ Verified on hardware (counter 0x85→0x8a) |
 | 12 JTAG port groups (J20/J21) + 13 TCP ports | ✅ Implemented, synthesized/implemented, on hardware |
-| **Vivado displays the ILA over XVC** | ❌ **Not fixed.** Still `DONE status = 0` / "No matching hw_ilas were found" — see [KI-1](docs/KNOWN_ISSUES.md#ki-1-ila-not-shown-over-xvc-done-status--0). Only the legacy debug-bridge port is affected: it has no bearing on the shipped design, and every ILA capture in this repo is over the local JTAG cable (`tools/ila_cap4.tcl` opens `localhost:3121`, not an XVC URL) |
+| **Vivado displays the ILA over XVC** | ✅ **Works for a device on the XVC chain** — verified for the KU15P (`RBCP_REG/ila64_1`, probe `RBCP_REG/probe0[63:0]`, 1024 samples captured over 2543), see §5.2. ❌ only for the Zynq-**internal** Debug Bridge configuration — that is [KI-1](docs/KNOWN_ISSUES.md#ki-1-ila-not-shown-over-xvc-done-status--0), a `DONE status = 0` detection issue |
 | 12-channel design (12 engines + broadcast, FIFO streaming) | ✅ Deployed (v24), `xvcserver_g1` on 2543..2554 |
 | Single-channel projects A/B/C | ✅ Built, measured, tag `v18` |
 | DMA data path (DDR ↔ shift engine, no CPU per word) | ✅ Verified end to end (36 MB config, 34.7 MB flash) |
@@ -222,6 +222,31 @@ external XCKU15P (IDCODE `0x14A56093`):
 | DMA correctness | 563 transfers, `pop == words` exactly, 0 drops, `DMASR = 0x1002` |
 | Register-path fallback | none on the DMA build (`chunk_bits = 0`) |
 
+### 5.2 ILA over XVC (verified)
+
+Remote ILA viewing does work with this stack — the earlier ❌ was about the
+Zynq-internal Debug Bridge port, not about ILA-over-XVC in general. Verified
+2026-11-15 against the KU15P on the external chain, through `xvcserver_g1` on
+2543 at 10 MHz:
+
+```
+open_hw_target -xvc_url 192.168.1.113:2543
+set_property PROBES.FILE test_bits/top.ltx [current_hw_device]
+refresh_hw_device -update_hw_probes true
+get_hw_ilas                      -> hw_ila_1
+get_hw_probes -of_objects hw_ila_1 -> RBCP_REG/probe0
+run_hw_ila / wait_on_hw_ila / upload_hw_ila_data
+write_hw_ila_data -csv_file ...  -> 1024 samples
+```
+
+The captured CSV is [docs/ila_over_xvc.csv](docs/ila_over_xvc.csv) (27 KB, 1024
+samples of a 64-bit probe). The server log for that session shows the shift
+traffic (`cmd=sh` repeated, then `client closed`), so the data path is the XVC
+server, not the local cable. The probe happens to read constant zero in this
+test (the monitored net is idle in the `top.bit` design), which does not change
+what it demonstrates: the debug hub round-trip — core enumeration, arm, capture,
+upload — completes over XVC.
+
 Two things the numbers do not say, and should: C does **not** beat B end to end
 (2.3% slower, ~1.7x B's CPU) — its value is CPU offload and few-large-shift
 workloads — and neither beats the local cable, because XVC pays a protocol round
@@ -236,7 +261,7 @@ Summary:
 
 | ID | Issue | Status |
 |---|---|---|
-| KI-1 | Vivado cannot see the ILA over XVC (`DONE status = 0`) | **Not fixed** — unresolved since it was diagnosed, needs vendor support. Workaround is ILA over local JTAG. Only the debug-bridge port is affected: the 12-channel and single-channel designs implement the TAP directly and drive an external chain, so there is no Debug Bridge or ILA to display |
+| KI-1 | Vivado cannot see the ILA over XVC (`DONE status = 0`) | **Not fixed, but narrowly scoped**: it is specific to the Zynq-**internal** Debug Bridge configuration. ILA over XVC itself works for a device on the chain — verified on the KU15P, see §5.2. Workaround for the internal case remains ILA over local JTAG |
 | KI-2 | After loading a bitstream with a JTAG cable, XVC often cannot connect | Diagnosed (BSCAN mux latch); let the FSBL configure the PL |
 | KI-3 | Host Ubuntu 26.04 cannot build PetaLinux 2022.2 directly | Worked around with a container (see §7) |
 

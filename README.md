@@ -193,6 +193,7 @@ Broadcast register block `0x43CD0000`:
 | Shift throughput, DMA | **9.96 Mbit/s** — 99.6% of the 10 MHz wire rate |
 | Per-shift latency | 0.21–0.26 ms (6 bit) |
 | Full bitstream (KU15P, 290.7 Mbit) | CPU path **50.29 s** / FIFO **32.62 s** / DMA **33.38 s** / HS2 **30.32 s** |
+| ILA over XVC | ✅ Verified on the KU15P: `hw_ila_1` / `RBCP_REG/probe0[63:0]`, 1024 samples captured over 2543 ([evidence](xvc/docs/ila_over_xvc.csv)) |
 | Flash programming, 34.7 MB image | XVC **18 min 43 s** / local USB HS2 **14 min 02 s** |
 
 The resource and DMA-shift rows describe the 13-engine production design. The

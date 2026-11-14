@@ -13,6 +13,16 @@ This document summarizes the issues in this project that are currently unresolve
 
 ## KI-1: ILA Not Shown Over XVC (`DONE status = 0`)
 
+> **Scope (updated 2026-11-15).** This entry is about the *Zynq-internal* Debug
+> Bridge configuration only — the PS7 + `dbg_axi2bscan` + `dbg_bscan2hub` + ILA
+> design, where the XVC engine has to reach the FPGA's own TAP. ILA over XVC as
+> such works: against a device on the external chain (the KU15P that the 12
+> `jtag_ctrl` engines drive), Vivado enumerates the core and captures over port
+> 2543 — `hw_ila_1`, probe `RBCP_REG/probe0[63:0]`, 1024 samples, exported to
+> [`ila_over_xvc.csv`](ila_over_xvc.csv). See `xvc/README.md` §5.2 for the
+> transcript. The symptom below therefore does not mean "XVC cannot show an ILA";
+> it means "this particular internal-TAP bridge is not detected as programmed".
+
 ### Symptoms
 
 Vivado can enumerate the device over XVC, but then reports:
