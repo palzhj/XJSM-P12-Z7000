@@ -4,6 +4,11 @@ xvc/petalinux/xvc/images/
 xvc/petalinux/xvc/components/
 xvc/vivado/work*/
 xvc/vivado/out*/
+# the three single-channel comparison projects keep the same layout one level
+# deeper; without these a commit picks up 23 MB of Vivado artifacts
+xvc/vivado/single/*/work*/
+xvc/vivado/single/*/out*/
+xvc/vivado/single/*/NA/
 xvc/vivado/.Xil/
 xvc/vivado/.vivado-ai/
 xvc/vivado/NA/

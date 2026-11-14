@@ -15,7 +15,11 @@
 // 0x50 TREADY_CYC  RO   clocks m_axis_tdo_tready was high
 // 0x54 POP_CYC     RO   clocks a word was actually popped (tvalid & tready)
 module jtag_ctrl #(
-    parameter integer DIV_DEFAULT = 8
+    parameter integer DIV_DEFAULT = 8,
+    /* USE_FIFO = 0 builds the register/chunk path only: the TX/RX queues are
+     * pruned by synthesis, so that bitstream cannot quietly piggyback on the
+     * FIFO and its measurement is honestly the chunk path. */
+    parameter integer USE_FIFO    = 1
 ) (
     input  wire        clk,
     input  wire        rstn,
@@ -100,8 +104,22 @@ module jtag_ctrl #(
     wire       rx_full  = (rx_diff >= 8'd127);
     wire [7:0] tx_free8 = tx_full ? 8'd0 : (8'd128 - tx_diff);
     wire [7:0] rx_used8 = rx_diff;
+    /* Constant-selected views: with USE_FIFO=0 these fold to constants, so the
+     * queue arrays and their logic drop out of the netlist entirely. */
+    localparam FIFO_ON    = (USE_FIFO != 0);
+    wire       tx_empty_x = FIFO_ON ? tx_empty : 1'b1;
+    wire       rx_full_x  = FIFO_ON ? rx_full  : 1'b0;
+    wire       rx_empty_x = FIFO_ON ? rx_empty : 1'b1;
     reg [31:0] dmaw_q;       /* 0x44: number of words to move in this DMA run */
     reg [31:0] dmaw_left;    /* decremented on every m_axis pop */
+    /* In DMA mode the engine only shifts while a run is armed. Software writes
+     * the word count to 0x44 and then starts the DMA, so exactly N TDO words
+     * are produced for an N-word run and the last one carries TLAST. Without
+     * this gate the engine shifts any word that reaches the TX FIFO, which
+     * pairs the run with words left over from the previous chunk and leaves
+     * the tail one word short of TLAST. The register path (dma_en = 0) is
+     * unaffected. */
+    wire stream_go = !dma_en || (dmaw_left != 32'd0);
     reg        stream_chunk;
     (* INIT = 32'h0 *) reg [31:0] stream_cnt;
     (* INIT = 32'h0 *) reg [31:0] stream_start_cnt;
@@ -320,7 +338,7 @@ module jtag_ctrl #(
                 end
                 S_IDLE: begin
                     tck <= 1'b0;
-                    if (!tx_empty && !rx_full) begin
+                    if (stream_go && !tx_empty_x && !rx_full_x) begin
                         running      <= 1'b1;
                         stream_chunk <= 1'b1;
                         sh_tms       <= 32'd0;
@@ -383,7 +401,7 @@ module jtag_ctrl #(
                                  * full and deadlocks the whole pipeline. If the
                                  * consumer is too slow the word is dropped and
                                  * counted in stream_drop instead. */
-                                if (!rx_full) begin
+                                if (!rx_full_x) begin
                                     rx_mem[rx_wr[6:0]] <= tdo_q;
                                     rx_push       <= 1'b1;
                                     stream_cnt    <= stream_cnt + 32'd1;
@@ -412,12 +430,12 @@ module jtag_ctrl #(
      * the AXI RXD register uses). axis_push / axis_pop are declared with the
      * handshake wires near the top so the pointer block sees them directly.
      */
-    assign s_axis_tdi_tready = dma_en && !tx_full;
-    assign m_axis_tdo_tdata  = rx_mem[rx_rd[6:0]];
-    assign m_axis_tdo_tvalid = dma_en && !rx_empty;
+    assign s_axis_tdi_tready = dma_en && FIFO_ON && !tx_full;
+    assign m_axis_tdo_tdata  = FIFO_ON ? rx_mem[rx_rd[6:0]] : 32'd0;
+    assign m_axis_tdo_tvalid = dma_en && !rx_empty_x;
     /* S2MM needs TLAST to know where a transfer ends. Software loads the word
      * count into 0x44 first; the last word of the run carries TLAST. */
-    assign m_axis_tdo_tlast  = dma_en && !rx_empty && (dmaw_left == 32'd1);
+    assign m_axis_tdo_tlast  = dma_en && !rx_empty_x && (dmaw_left == 32'd1);
     /* dmaw_left is decremented in the AXI write always block below, which is
      * also where it is loaded - one block, one driver. */
 
@@ -430,7 +448,11 @@ module jtag_ctrl #(
     always @(posedge clk) begin
         if (!rstn || ctrl_q[2]) begin
             tx_wr <= 8'd0; tx_rd <= 8'd0; rx_wr <= 8'd0; rx_rd <= 8'd0;
-        end else begin
+        end else if (FIFO_ON) begin
+            /* With the queue pruned the pointers must not move at all: a stray
+             * 0x1C write would otherwise advance tx_wr forever and latch
+             * tx_full, so 0x24 STATUS would report 0 free on a build that has
+             * no queue to fill. */
             if (tx_push) begin
                 tx_mem[tx_wr[6:0]] <= axis_push ? s_axis_tdi_tdata : wdata;
                 tx_wr         <= tx_wr + 8'd1;
